@@ -1,0 +1,233 @@
+name: build
+
+# PR: build both targets on both architectures, test, scan. Nothing is pushed.
+# main: the same, then push :main and :sha-<short> (ci target: :main-ci, :sha-<short>-ci).
+# Tag vX.Y.Z: push :X.Y.Z, :X.Y, :latest (+ -ci variants), refusing to overwrite an existing X.Y.Z.
+# Weekly: rebuild main so Debian security updates land without a dependency change.
+on:
+  pull_request:
+  push:
+    branches: [main]
+    tags: ['v*.*.*']
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  IMAGE: ghcr.io/git-cgallagher/ansible-runtime
+  PUBLISH: ${{ github.event_name != 'pull_request' }}
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  # One job per architecture x target. arm64 builds natively on GitHub's arm runner
+  # (no QEMU emulation). Each job builds, runs tests/smoke.sh in the image, and outside
+  # PRs pushes the image by digest; the `manifest` job joins the two arches under tags.
+  image:
+    name: image (${{ matrix.target }}, ${{ matrix.arch }})
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [ci, runtime]
+        arch: [amd64, arm64]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069  # v4.4.1
+
+      - name: Build
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc  # v7.4.0
+        with:
+          context: .
+          target: ${{ matrix.target }}
+          platforms: linux/${{ matrix.arch }}
+          load: true
+          tags: ansible-runtime:test
+          cache-from: type=gha,scope=${{ matrix.arch }}-${{ matrix.target }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.arch }}-${{ matrix.target }}
+
+      - name: Smoke test
+        run: docker run --rm -v "$PWD":/src -w /src ansible-runtime:test tests/smoke.sh ${{ matrix.target }}
+
+      - name: Scan for fixable critical vulnerabilities
+        if: matrix.arch == 'amd64'
+        uses: anchore/scan-action@27805bf3b4e84b4a5c980df22ed233c00390a439  # v7.4.2
+        with:
+          image: ansible-runtime:test
+          severity-cutoff: critical
+          only-fixed: true
+          output-format: table
+
+      - name: Log in to GHCR
+        if: env.PUBLISH == 'true'
+        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6  # v4.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Same inputs as the Build step, so it is all cache hits; only the push is new.
+      - name: Push by digest
+        id: push
+        if: env.PUBLISH == 'true'
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc  # v7.4.0
+        with:
+          context: .
+          target: ${{ matrix.target }}
+          platforms: linux/${{ matrix.arch }}
+          outputs: type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=${{ matrix.arch }}-${{ matrix.target }}
+          provenance: false
+
+      - name: Record the digest
+        if: env.PUBLISH == 'true'
+        env:
+          DIGEST: ${{ steps.push.outputs.digest }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/digests"
+          touch "$RUNNER_TEMP/digests/${DIGEST#sha256:}"
+      - if: env.PUBLISH == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: digest-${{ matrix.target }}-${{ matrix.arch }}
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  # Proves the ci image works for real consumers: the coverage check against every
+  # git_cgallagher.* repo's declared collections, their linters, and one Molecule
+  # scenario run from inside the image against the runner's Docker daemon.
+  consumers:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069  # v4.4.1
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc  # v7.4.0
+        with:
+          context: .
+          target: ci
+          platforms: linux/amd64
+          load: true
+          tags: ansible-runtime:test
+          cache-from: type=gha,scope=amd64-ci
+
+      - name: Check out the consumer collections (main)
+        run: |
+          for r in ansible-collection-isc ansible-collection-windows ansible-collection-orchestration; do
+            git clone --quiet --depth 1 "https://github.com/git-cgallagher/$r" "consumers/$r"
+          done
+
+      - name: Every declared collection is pinned, inside its range
+        run: |
+          docker run --rm -v "$PWD":/src -w /src ansible-runtime:test \
+            python tests/coverage.py consumers/ansible-collection-isc \
+              consumers/ansible-collection-windows consumers/ansible-collection-orchestration
+
+      - name: yamllint + ansible-lint (isc, windows)
+        run: |
+          for r in ansible-collection-isc ansible-collection-windows; do
+            echo "::group::$r"
+            docker run --rm -v "$PWD/consumers/$r":/work ansible-runtime:test \
+              bash -c 'yamllint . && ansible-lint'
+            echo "::endgroup::"
+          done
+
+      # The checkout is mounted at /work while the host sees it elsewhere, the same
+      # path mismatch a `container:` job has; the test containers must not care.
+      - name: Molecule from inside the image (isc kea_dhcp, Debian 12)
+        working-directory: consumers/ansible-collection-isc
+        run: |
+          mkdir -p .molecule-collections/ansible_collections/git_cgallagher
+          ln -sfn ../../.. .molecule-collections/ansible_collections/git_cgallagher/isc
+          docker run --rm -v "$PWD":/work -v /var/run/docker.sock:/var/run/docker.sock \
+            -w /work/roles/kea_dhcp ansible-runtime:test \
+            molecule test -s default --platform-name kea-debian12
+
+  manifest:
+    name: manifest (${{ matrix.target }})
+    if: github.event_name != 'pull_request'
+    needs: [image, consumers]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    strategy:
+      matrix:
+        target: [ci, runtime]
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
+        with:
+          pattern: digest-${{ matrix.target }}-*
+          path: ${{ runner.temp }}/digests
+          merge-multiple: true
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069  # v4.4.1
+      - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6  # v4.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Tags
+        id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302  # v6.2.0
+        with:
+          images: ${{ env.IMAGE }}
+          flavor: |
+            latest=false
+            suffix=${{ matrix.target == 'ci' && '-ci' || '' }},onlatest=true
+          tags: |
+            type=raw,value=main,enable=${{ github.ref == 'refs/heads/main' }}
+            type=sha,prefix=sha-
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+
+      # GHCR tags are mutable. A release version must never be re-pointed: consumers pin
+      # it, and the weekly rebuild only ever moves :main.
+      - name: Refuse to overwrite an existing release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          REF: ${{ github.ref_name }}
+          SUFFIX: ${{ matrix.target == 'ci' && '-ci' || '' }}
+        run: |
+          tag="$IMAGE:${REF#v}$SUFFIX"
+          if docker buildx imagetools inspect "$tag" >/dev/null 2>&1; then
+            echo "::error::$tag already exists; release a new version instead"
+            exit 1
+          fi
+
+      - name: Create the multi-arch manifest
+        id: create
+        working-directory: ${{ runner.temp }}/digests
+        env:
+          TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+          args=()
+          while IFS= read -r t; do [ -n "$t" ] && args+=(-t "$t"); done <<< "$TAGS"
+          sources=()
+          for d in *; do sources+=("$IMAGE@sha256:$d"); done
+          docker buildx imagetools create "${args[@]}" "${sources[@]}"
+          first=$(head -n1 <<< "$TAGS")
+          docker buildx imagetools inspect "$first"
+          echo "digest=$(docker buildx imagetools inspect "$first" --format '{{json .Manifest.Digest}}' | tr -d '"')" >> "$GITHUB_OUTPUT"
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8  # v4.2.2
+        with:
+          subject-name: ${{ env.IMAGE }}
+          subject-digest: ${{ steps.create.outputs.digest }}
+          push-to-registry: true

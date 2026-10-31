@@ -1,0 +1,20 @@
+---
+# Your own collections, layered on the `ci` target to make the `runtime` target.
+# Collection CI uses the `ci` target instead, so it always tests its own checkout,
+# never a baked copy of the last release.
+collections:
+  # git_cgallagher.isc: Kea DHCP (kea_dhcp, kea_dhcp_msdns) and Stork roles.
+  - name: git_cgallagher.isc
+    version: 1.6.2
+  # git_cgallagher.orchestration: the time_offset strategy plugin.
+  - name: git_cgallagher.orchestration
+    version: 0.2.2
+  # git_cgallagher.windows (formerly .gpo): gpo_backup / gpo_import. Not on Galaxy and not tagged
+  # yet, so it installs from git at a COMMIT on main (0.2.0). Renovate can't bump a commit pin:
+  # bump it by hand until the collection is on Galaxy (ansible-collection-windows issue #3),
+  # then switch this entry to `name: git_cgallagher.windows` + a version.
+  - name: https://github.com/git-cgallagher/ansible-collection-windows.git
+    type: git
+    version: 00e66cd32d6567153def4a1a2ca58233cb80d339
+  # git_cgallagher.molecule (the Molecule driver collection, formerly testlab) is not here yet:
+  # it has no GitHub remote. Add it once it's pushed and tagged.

@@ -1,0 +1,25 @@
+# Direct Python dependencies of the image. Edit THIS file, then regenerate python.txt:
+#   tests/lock.sh
+# Ranges here are deliberately loose; python.txt pins every package (direct and transitive)
+# to one exact version with hashes. Renovate bumps python.txt and keeps these ranges honest.
+# Each line says why the package is here and who needs it.
+
+# The controller. One exact version for every job (pinned in python.txt). The cross-version
+# compatibility matrix (2.18 ... devel) stays in each collection's ansible-test sanity job.
+ansible-core>=2.21,<2.22
+
+# Linters: the `lint` job in every collection repo (yamllint . && ansible-lint).
+ansible-lint
+yamllint
+
+# Molecule + the docker driver: every role scenario in isc and windows.
+molecule
+molecule-plugins[docker]
+# Docker SDK: molecule-plugins' docker driver and community.docker's docker_api modules.
+docker
+
+# psrp connection: every Windows target (windows gpo_* roles, isc kea_dhcp_msdns, lab DCs).
+pypsrp
+
+# kubernetes.core modules: kea_dhcp and Stork in Kubernetes mode (isc).
+kubernetes

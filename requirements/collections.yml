@@ -1,0 +1,34 @@
+---
+# Collections baked into the image, each at ONE exact version. ansible-galaxy treats a bare
+# version as an exact pin. Renovate (ansible-galaxy manager) opens a PR when one has a newer
+# release. Published collections keep their own >= ranges; tests/coverage.py fails CI if a pin
+# here falls outside a range a consumer repo declares, or a consumer needs one that's missing.
+#
+# Two layers, matching the two image targets (see Dockerfile):
+#   collections.yml          -> the `ci` target: third-party collections only
+#   collections-runtime.yml  -> the `runtime` target adds git_cgallagher.* on top
+collections:
+  # ansible.windows: win_powershell / win_copy / win_file / win_feature / win_reboot.
+  # Used by: windows (gpo_backup, gpo_import), isc (kea_dhcp_msdns), lab DC scenarios.
+  - name: ansible.windows
+    version: 3.9.2
+  # microsoft.ad: microsoft.ad.domain promotes the lab VMs to domain controllers.
+  # Used by: windows domain-lab, isc kea_dhcp_msdns windows scenario, molecule ad_forest.
+  - name: microsoft.ad
+    version: 1.12.1
+  # community.docker: the docker connection plugin Molecule uses to reach test containers.
+  # Used by: every Molecule docker scenario (isc, windows, molecule).
+  - name: community.docker
+    version: 5.4.0
+  # community.library_inventory_filtering_v1: not used directly. community.docker depends on
+  # it; pinned here so transitive collections are locked too (smoke.sh fails on any unpinned one).
+  - name: community.library_inventory_filtering_v1
+    version: 1.1.5
+  # community.general: community.general.apk (kea_dhcp on Alpine).
+  # Used by: isc.
+  - name: community.general
+    version: 13.5.0
+  # kubernetes.core: kea_dhcp / Stork in Kubernetes mode (also needs the `kubernetes` pip package).
+  # Used by: isc.
+  - name: kubernetes.core
+    version: 6.6.0

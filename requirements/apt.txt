@@ -1,0 +1,15 @@
+# Debian packages installed in the image, one per line (comments and blank lines ignored).
+# Versions are NOT pinned: Debian removes old versions from its archive, so pins break builds.
+# They track the pinned base image (Dockerfile digest, bumped by Renovate) plus the weekly
+# scheduled rebuild, which picks up Debian security updates.
+
+# git: ansible-galaxy installs from git sources; ansible-lint and Molecule read the repo.
+git
+# openssh-client: the ssh connection plugin (Linux targets, local playbook runs).
+openssh-client
+# sshpass: password-based ssh, for first-contact bootstrap of new hosts.
+sshpass
+# ca-certificates: TLS to Galaxy, PyPI, GitHub and Windows targets over HTTPS.
+ca-certificates
+# tini: PID 1 that reaps zombies and forwards signals in `docker run`.
+tini
