@@ -53,10 +53,11 @@ jobs:
       - run: yamllint . && ansible-lint
 ```
 
-Molecule's docker driver works in a `container:` job: GitHub mounts the runner's Docker socket
-into it, and the image has the docker CLI. The collections live in Python's `site-packages`, so
-they're found even when a Molecule config replaces `ANSIBLE_COLLECTIONS_PATH` or the job
-overrides `HOME`.
+Molecule's docker driver should work in a `container:` job: GitHub mounts the runner's Docker
+socket into job containers and the image has the docker CLI. This repo's CI proves it with
+`docker run` on a runner; the first consumer migration confirms it in a real `container:` job.
+The collections live in Python's `site-packages`, so they're found even when a Molecule config
+replaces `ANSIBLE_COLLECTIONS_PATH` or the job overrides `HOME`.
 
 Keep each collection's `ansible-test sanity` matrix (`ansible-community/ansible-test-gh-action`
 across ansible-core versions) as it is. This image pins **one** ansible-core; that matrix

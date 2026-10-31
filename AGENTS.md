@@ -27,7 +27,10 @@ Public repo; the new-public-repo baseline applies.
   from inside the image against the runner's Docker.
 - `manifest (target)`: not on PRs. Joins the two arches under the tags, refuses to overwrite an
   existing `X.Y.Z`, attests build provenance.
-- Triggers: PR, push to `main`, tag `vX.Y.Z`, weekly (Mon 06:00 UTC, moves `:main` only), manual.
+- Triggers: PR, push to `main`, tag `vX.Y.Z`, weekly (Mon 06:00 UTC, moves `:main` / `:main-ci` only;
+  `sha-` tags are only made on push), manual.
+- Required checks (ruleset): the four `image (…)` jobs and `consumers`. **Never `manifest`**: it
+  doesn't run on PRs, so requiring it would block every merge.
 
 ## Releasing
 
@@ -59,6 +62,11 @@ minor/major, Python minor, or a removed collection/package.
   the pin files (`ansible._*` are ansible-core internals and exempt).
 - **`molecule drivers | grep -q` under `set -o pipefail` fails at random** (grep exits early,
   molecule gets SIGPIPE). Capture the output first.
+- **The image runs as root, deliberately.** GitHub `container:` jobs need it (the workspace and
+  `/github/home` are root-owned) and so does the Docker socket. `bin/ar` runs it the same way.
+- **Dependabot security updates are OFF here; Dependabot alerts stay ON** (a deliberate exception
+  to the public-repo baseline). Renovate reads the alerts (`vulnerabilityAlerts`) and opens the fix
+  PRs; Dependabot would open duplicates and can't regenerate the hashed `python.txt`.
 - **`git_cgallagher.windows` is pinned by commit**: no tag, not on Galaxy. Renovate can't bump it.
 - `ansible-lint` and `yamllint` versions here decide what passes in every consumer once they
   adopt the image; read a Renovate PR's `consumers` job before merging it.
@@ -68,6 +76,7 @@ minor/major, Python minor, or a removed collection/package.
 - Migrate consumers' tooling jobs (lint, argument-specs, kea-render, version-bump, docker-driver
   Molecule, release) to `container: …:X.Y.Z-ci`: isc → windows → orchestration. Their required
   check names must stay the same or their rulesets change in the same session.
+- Confirm Molecule's docker driver inside a real `container:` job (only `docker run` is tested here).
 - Windows KVM lab jobs: decide image-as-controller (`docker run --device /dev/kvm`) vs host.
 - Add `git_cgallagher.molecule` once it has a remote and a release.
 - Install the Mend Renovate app on this repo (owner, UI only).
