@@ -71,6 +71,14 @@ minor/major, Python minor, or a removed collection/package.
 
 ## ⚠️ Gotchas
 
+- **Each `runtime.sh` call in a consumer is a fresh container.** Molecule's state under
+  `~/.ansible/tmp` doesn't carry over between calls, so a separate `molecule prepare` after
+  `molecule create` falls back to SSH. Use one `molecule test`, or one
+  `runtime.sh bash -c '…'` for several steps (found by the aws Molecule work, 2026-11-01). The
+  consumers' build and argument-specs jobs do the same for `/tmp` paths.
+- **A job that varies ansible-core must drop `resolvelib` from the constraints too**
+  (docs/SHARED-DEPENDENCIES.md, exception 2).
+
 - **`python.txt` can't be a pip constraints file.** Its `--hash` lines put pip in
   `--require-hashes` mode, which then refuses any package the lock doesn't list (tested 2026-11-01).
   That's why the image carries a hash-free derived `constraints.txt`.

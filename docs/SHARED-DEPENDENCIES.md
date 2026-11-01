@@ -60,7 +60,10 @@ lands here first.
    `ansible_test/_internal/python_requirements.py`), so Phase 4 evaluates feeding those from the
    image. Rule until then: pin everything except the dimension the matrix varies.
 2. **isc `argument-specs`**: it loops over ansible-core minors, so it uses the constraints minus
-   `ansible-core`.
+   `ansible-core` **and `resolvelib`**. Only ansible-core uses resolvelib, and each minor allows a
+   different range (2.18 needs `<1.1`; the image pins 1.2.1), so with the pin left in, 2.18 can't
+   resolve (found 2026-11-01). Any job that varies ansible-core drops both:
+   `grep -vE '^(ansible-core|resolvelib)=='`.
 3. **`devel` canaries**: unpinned on purpose, because they exist to see upstream breakage early.
 4. **`ansible-collection-molecule`'s own CI never runs in the image**, because it would test the
    baked copy of the driver instead of its checkout. It may still read the constraints file.
@@ -92,6 +95,19 @@ Merge one at a time on the Galaxy-publishing repos and wait for each release run
 | molecule | — (must not run in the image) | `lint`, `molecule` and `windows-lab` (setup-molecule `constraints`) | `.github/ci/constraints.txt` |
 
 Each PR also bumps `RUNTIME_IMAGE` to 0.5.0, so the image and the derived pins move together.
+Opened 2026-11-01: aws PR 7, windows PR 45, isc PR 29, orchestration PR 19, molecule PR 17.
+
+How each repo reads the pin: a runner job takes `RUNTIME_IMAGE` from `ansible-test.yml`
+(`ci.yml` in molecule) with `sed -n 's/^ *RUNTIME_IMAGE: //p'`, so that one line stays the only
+place it's set, including in `release.yml` and `argument-specs.yml`, which are separate workflows.
+
+**Not yet: collection pins on runner jobs that use setup-molecule** (windows `domain-lab`, isc
+`windows-dc`, molecule's own jobs). Those still install collections from their `requirements.yml`
+ranges, because the derived `collections.yml` pins `git_cgallagher.molecule` at the image's commit
+(v0.2.1), which differs from the setup-molecule versions those labs use (isc v0.2.1, windows v0.3.1,
+molecule its own checkout). Installing it would replace the collection the action just put there.
+Phase 2b: move the image and every consumer's setup-molecule to one tag, then feed the labs
+`collections.yml` minus `git_cgallagher.molecule`.
 
 ### Phase 3: `RUNTIME_IMAGE` bumps without a human
 
