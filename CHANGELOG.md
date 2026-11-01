@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.5.0 (2026-11-01)
+
+### Added
+
+- Shared dependency model ([docs/SHARED-DEPENDENCIES.md](docs/SHARED-DEPENDENCIES.md), issue #8): every
+  version for the `git_cgallagher.*` repos' tooling is chosen in `requirements/`.
+- Derived pin files in both images, `/usr/share/ansible-runtime/constraints.txt` (`python.txt` without
+  hashes) and `collections.yml`, for runner jobs (`pip install -c`, `ansible-galaxy collection install -r`).
+- Test tools consumers declare: moto[ssm,sts] 5.2.5, flask, flask-cors, pytest.
+
+### Changed
+
+- The `consumers` job's Python check also reads each consumer's `tests/unit/requirements.txt` and
+  `tests/integration/requirements.txt`.
+
 ## 0.4.0 (2026-11-01)
 
 ### Added

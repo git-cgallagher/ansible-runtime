@@ -52,6 +52,33 @@ for n in sorted(have):
 sys.exit("\n".join(errors) if errors else 0)
 PY
 
+echo "== derived pin files (/usr/share/ansible-runtime) match what is installed"
+python - "$target" <<'PY'
+import pathlib, re, sys, yaml
+from importlib.metadata import version
+d = pathlib.Path("/usr/share/ansible-runtime")
+errors, n = [], 0
+for line in (d / "constraints.txt").read_text().splitlines():
+    m = re.match(r"^([A-Za-z0-9_.-]+)==([^\s;]+)", line)
+    if m:
+        n += 1
+        if version(m[1]) != m[2]:
+            errors.append(f"constraints.txt: {m[1]}=={m[2]}, installed {version(m[1])}")
+        if "--hash" in line:
+            errors.append(f"constraints.txt: hash on {m[1]}")
+pinned = sum(1 for l in open("requirements/python.txt") if re.match(r"^[A-Za-z0-9_.-]+==", l))
+if n != pinned:
+    errors.append(f"constraints.txt has {n} pins, python.txt {pinned}")
+files = ["requirements/collections.yml"]
+if sys.argv[1] == "runtime":
+    files.append("requirements/collections-runtime.yml")
+want = [c for f in files for c in yaml.safe_load(open(f))["collections"]]
+if yaml.safe_load((d / "collections.yml").read_text())["collections"] != want:
+    errors.append("collections.yml differs from this target's pin files")
+print(f"constraints.txt: {n} pins; collections.yml: {len(want)} collections")
+sys.exit("\n".join(errors) if errors else 0)
+PY
+
 echo "== collections are found even when ANSIBLE_COLLECTIONS_PATH and HOME are overridden"
 ANSIBLE_COLLECTIONS_PATH=/nonexistent HOME=/tmp \
   ansible-doc -t module community.docker.docker_container >/dev/null \

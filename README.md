@@ -73,6 +73,16 @@ they start (isc's Kea render) or reach published ports on `127.0.0.1` (isc's Sto
 The collections live in Python's `site-packages`, so they're found even when a Molecule config
 replaces `ANSIBLE_COLLECTIONS_PATH`.
 
+A job that can't run in the image (a KVM lab, a release) takes the same versions from it:
+
+```yaml
+      - run: docker run --rm "$RUNTIME_IMAGE" cat /usr/share/ansible-runtime/constraints.txt > "$RUNNER_TEMP/constraints.txt"
+      - run: pip install -c "$RUNNER_TEMP/constraints.txt" ansible-core molecule
+```
+
+So one `RUNTIME_IMAGE` pin decides every version a repo's CI uses
+([docs/SHARED-DEPENDENCIES.md](docs/SHARED-DEPENDENCIES.md)).
+
 Keep each collection's `ansible-test sanity` matrix (`ansible-community/ansible-test-gh-action`
 across ansible-core versions) as it is. This image pins **one** ansible-core; that matrix
 exists to test across many.

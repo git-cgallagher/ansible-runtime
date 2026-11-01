@@ -47,6 +47,12 @@ RUN site=$(python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])'
 RUN sha=$(python -c 'import yaml; print(next(c["version"] for c in yaml.safe_load(open("/tmp/requirements/collections.yml"))["collections"] if c["name"].endswith("/ansible-collection-molecule.git")))') \
  && pip install --no-deps "molecule-git-cgallagher @ git+https://github.com/git-cgallagher/ansible-collection-molecule.git@$sha"
 
+# Derived pin files (/usr/share/ansible-runtime/): the same versions, readable by jobs that run on
+# the runner rather than in the image (pip -c, ansible-galaxy -r). docs/SHARED-DEPENDENCIES.md.
+COPY build/derive_pins.py /usr/local/share/ansible-runtime-build/derive_pins.py
+RUN python /usr/local/share/ansible-runtime-build/derive_pins.py \
+      /tmp/requirements/python.txt /tmp/requirements/collections.yml
+
 WORKDIR /work
 ENTRYPOINT ["/usr/bin/tini", "--"]
 CMD ["bash"]
@@ -67,6 +73,9 @@ RUN site=$(python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])'
 # e.g. a collection release that raises its boto3 floor past the lock.
 COPY tests/collection_requirements.py /tmp/collection_requirements.py
 RUN python /tmp/collection_requirements.py && rm /tmp/collection_requirements.py
+# The runtime target's pin files list its collections too.
+RUN python /usr/local/share/ansible-runtime-build/derive_pins.py /tmp/requirements/python.txt \
+      /tmp/requirements/collections.yml /tmp/requirements/collections-runtime.yml
 LABEL org.opencontainers.image.title="ansible-runtime" \
       org.opencontainers.image.description="Pinned Ansible toolchain plus the git_cgallagher.* collections, for running playbooks locally and in CI" \
       org.opencontainers.image.source="https://github.com/git-cgallagher/ansible-runtime" \
