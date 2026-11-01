@@ -11,5 +11,7 @@ openssh-client
 sshpass
 # ca-certificates: TLS to Galaxy, PyPI, GitHub and Windows targets over HTTPS.
 ca-certificates
+# openssl: test certificates (isc tests/kea_dhcp/run.sh makes a throwaway CA for Kea HA TLS).
+openssl
 # tini: PID 1 that reaps zombies and forwards signals in `docker run`.
 tini

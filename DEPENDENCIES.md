@@ -10,7 +10,7 @@ saying **why it's there and who uses it**. Read those for the detail; this page 
 | Debian packages | `requirements/apt.txt` | **not pinned** (Debian drops old versions); they follow the base digest and the weekly rebuild | weekly scheduled build |
 | Python packages (ansible-core, ansible-lint, yamllint, Molecule, pypsrp, kubernetes, docker SDK) | `requirements/python.in` → `requirements/python.txt` | every package, transitive ones too, at one version + hashes; installed with `--require-hashes` | Renovate (`pip-compile`), monthly + lock-file maintenance |
 | Third-party collections | `requirements/collections.yml` | exact version (a bare version is an exact pin to ansible-galaxy); transitive ones listed too | Renovate (`ansible-galaxy`), monthly |
-| Our collections (`git_cgallagher.*`) | `requirements/collections-runtime.yml` | exact version, or a commit for one not on Galaxy yet | Renovate (`ansible-galaxy`) as soon as released; commit pins by hand |
+| Our collections (`git_cgallagher.*`) | `requirements/collections-runtime.yml` | exact version | Renovate (`ansible-galaxy`) as soon as released |
 | Molecule driver (`molecule-git-cgallagher` pip package + `git_cgallagher.molecule`) | `requirements/collections.yml` (one commit pin; the Dockerfile reuses it for the pip driver) | commit SHA of a tag | by hand, to the SHA the consumers' `setup-molecule` action pins |
 | GitHub Actions | `.github/workflows/*.yml` | commit SHA + `# vX.Y.Z` comment | Renovate (`github-actions`), monthly |
 
@@ -36,9 +36,9 @@ alert (Dependabot alerts are on for the repo) names a fixed version.
 | community.general | 13.5.0 |
 | kubernetes.core | 6.6.0 |
 | git_cgallagher.molecule + molecule-git-cgallagher | 0.2.0 at commit `b2601b3` (both targets) |
-| git_cgallagher.isc | 1.6.2 (`runtime` only) |
+| git_cgallagher.isc | 2.1.0 (`runtime` only) |
 | git_cgallagher.orchestration | 0.2.2 (`runtime` only) |
-| git_cgallagher.windows | 0.2.0 at commit `00e66cd` (`runtime` only; not on Galaxy yet) |
+| git_cgallagher.windows | 0.4.0 (`runtime` only) |
 
 Keep this table in step with the files in the same PR (Renovate PRs included: edit the table
 on the Renovate branch before merging).
@@ -68,9 +68,6 @@ Widen the range in `python.in`, run `tests/lock.sh`, and check each collection's
 
 **Move to a new Python minor.** Manual on purpose (Renovate is told not to): change the
 `FROM python:` tag + digest, `constraints.python` in `renovate.json`, re-run `tests/lock.sh`.
-
-**Switch git_cgallagher.windows to Galaxy** once it's published (ansible-collection-windows
-issue #3): replace the git entry with `name: git_cgallagher.windows` + `version:`.
 
 **Bump the Molecule driver.** Change the `ansible-collection-molecule` commit in
 `requirements/collections.yml` to the new tag's commit, the same SHA the consumers'
