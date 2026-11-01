@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- CI: the `consumers` job also checks ansible-collection-aws (coverage, yamllint, ansible-lint),
+  now that its Molecule job runs in this image. No image change.
+
 ## 0.3.0 (2026-11-01)
 
 ### Added

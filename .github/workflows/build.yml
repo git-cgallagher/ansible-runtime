@@ -133,7 +133,7 @@ jobs:
 
       - name: Check out the consumer collections (main)
         run: |
-          for r in ansible-collection-isc ansible-collection-windows ansible-collection-orchestration; do
+          for r in ansible-collection-isc ansible-collection-windows ansible-collection-orchestration ansible-collection-aws; do
             git clone --quiet --depth 1 "https://github.com/git-cgallagher/$r" "consumers/$r"
           done
 
@@ -141,11 +141,12 @@ jobs:
         run: |
           docker run --rm -v "$PWD":/src -w /src ansible-runtime:test \
             python tests/coverage.py consumers/ansible-collection-isc \
-              consumers/ansible-collection-windows consumers/ansible-collection-orchestration
+              consumers/ansible-collection-windows consumers/ansible-collection-orchestration \
+              consumers/ansible-collection-aws
 
-      - name: yamllint + ansible-lint (isc, windows)
+      - name: yamllint + ansible-lint (isc, windows, aws)
         run: |
-          for r in ansible-collection-isc ansible-collection-windows; do
+          for r in ansible-collection-isc ansible-collection-windows ansible-collection-aws; do
             echo "::group::$r"
             docker run --rm -v "$PWD/consumers/$r":/work ansible-runtime:test \
               bash -c 'yamllint . && ansible-lint'
