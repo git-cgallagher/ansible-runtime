@@ -1,0 +1,22 @@
+---
+# Syntax-check only (never run): the git_cgallagher.* roles and plugins resolve by FQCN.
+- name: The time_offset strategy loads
+  hosts: all
+  gather_facts: false
+  strategy: git_cgallagher.orchestration.time_offset
+  tasks:
+    - name: Placeholder
+      ansible.builtin.debug:
+        msg: ok
+
+- name: Roles resolve
+  hosts: all
+  gather_facts: false
+  roles:
+    - git_cgallagher.isc.kea_dhcp
+    - git_cgallagher.isc.kea_dhcp_msdns
+    - git_cgallagher.isc.stork_agent
+    - git_cgallagher.isc.stork_repository
+    - git_cgallagher.isc.stork_server
+    - git_cgallagher.windows.gpo_backup
+    - git_cgallagher.windows.gpo_import

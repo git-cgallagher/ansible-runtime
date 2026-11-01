@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# ar: run a command in the ansible-runtime image, in the current directory.
+#   ar ansible-playbook -i inventory site.yml
+#   ar molecule test                      (from a role directory)
+#   ANSIBLE_RUNTIME_IMAGE=ghcr.io/git-cgallagher/ansible-runtime:main-ci ar ansible-lint
+# Mounts: $PWD at /work, the host's Docker socket (Molecule's docker driver), and your
+# ssh agent. It never starts, stops or restarts Docker Desktop (it's shared with other
+# workloads on this Mac).
+set -euo pipefail
+image=${ANSIBLE_RUNTIME_IMAGE:-ghcr.io/git-cgallagher/ansible-runtime:latest}
+
+args=(--rm -v "$PWD":/work -w /work -v /var/run/docker.sock:/var/run/docker.sock)
+[ -t 0 ] && [ -t 1 ] && args+=(-it)
+
+# ssh agent: Docker Desktop exposes the macOS agent at a fixed path inside its VM;
+# on Linux, mount the agent socket directly.
+if [ "$(uname -s)" = Darwin ]; then
+  args+=(-v /run/host-services/ssh-auth.sock:/ssh-agent -e SSH_AUTH_SOCK=/ssh-agent)
+elif [ -n "${SSH_AUTH_SOCK:-}" ]; then
+  args+=(-v "$SSH_AUTH_SOCK":/ssh-agent -e SSH_AUTH_SOCK=/ssh-agent)
+fi
+[ -f "$HOME/.ssh/known_hosts" ] && args+=(-v "$HOME/.ssh/known_hosts":/root/.ssh/known_hosts:ro)
+
+# Pass through ANSIBLE_* and MOLECULE_* settings from the calling shell.
+while IFS='=' read -r name _; do
+  case $name in ANSIBLE_RUNTIME_IMAGE) ;; ANSIBLE_*|MOLECULE_*) args+=(-e "$name") ;; esac
+done < <(env)
+
+exec docker run "${args[@]}" "$image" "$@"

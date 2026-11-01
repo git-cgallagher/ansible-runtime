@@ -1,0 +1,22 @@
+---
+# Syntax-check only (never run): every task resolves a module from a pinned third-party
+# collection, so a missing or broken collection fails `--syntax-check`.
+- name: Third-party collections resolve
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: ansible.windows
+      ansible.windows.win_ping:
+    - name: microsoft.ad
+      microsoft.ad.domain:
+        dns_domain_name: example.test
+        safe_mode_password: example-not-secret
+    - name: community.docker
+      community.docker.docker_container_info:
+        name: example
+    - name: community.general
+      community.general.apk:
+        name: example
+    - name: kubernetes.core
+      kubernetes.core.k8s_info:
+        kind: Pod

@@ -1,0 +1,69 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "Renovate keeps every pin in this repo current. DEPENDENCIES.md explains each manifest.",
+  "extends": ["config:recommended", "helpers:pinGitHubActionDigests"],
+  "timezone": "America/New_York",
+  "schedule": ["* 0-5 1 * *"],
+  "dependencyDashboard": true,
+  "labels": ["dependencies"],
+  "constraints": { "python": "3.13" },
+  "pip-compile": {
+    "managerFilePatterns": ["/^requirements/python\\.txt$/"]
+  },
+  "ansible-galaxy": {
+    "managerFilePatterns": ["/^requirements/collections(-runtime)?\\.yml$/"]
+  },
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["* 0-5 1 * *"]
+  },
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "schedule": ["at any time"],
+    "labels": ["security"]
+  },
+  "packageRules": [
+    {
+      "description": "GitHub Actions: one grouped PR a month, as in every other repo.",
+      "matchManagers": ["github-actions"],
+      "groupName": "GitHub Actions"
+    },
+    {
+      "description": "Third-party collections: one grouped PR a month.",
+      "matchManagers": ["ansible-galaxy"],
+      "groupName": "Ansible collections"
+    },
+    {
+      "description": "Our own collections: their own PR, so a release of isc or orchestration ships promptly.",
+      "matchManagers": ["ansible-galaxy"],
+      "matchPackageNames": ["git_cgallagher.**"],
+      "groupName": "git_cgallagher collections",
+      "schedule": ["at any time"]
+    },
+    {
+      "description": "Python tooling (lint, Molecule, libraries): one grouped PR a month.",
+      "matchManagers": ["pip-compile"],
+      "groupName": "Python packages"
+    },
+    {
+      "description": "ansible-core minor/major: always its own PR. It changes the controller for every job and needs the python.in range widened.",
+      "matchManagers": ["pip-compile"],
+      "matchPackageNames": ["ansible-core"],
+      "matchUpdateTypes": ["minor", "major"],
+      "groupName": null,
+      "labels": ["dependencies", "ansible-core"]
+    },
+    {
+      "description": "Base images: digest and patch bumps grouped monthly.",
+      "matchManagers": ["dockerfile"],
+      "groupName": "Base images"
+    },
+    {
+      "description": "Python minor (3.13 -> 3.14) is a deliberate, manual change: it needs constraints.python, tests/lock.sh and the Dockerfile moved together. Digests still update.",
+      "matchManagers": ["dockerfile"],
+      "matchDepNames": ["python"],
+      "matchUpdateTypes": ["minor", "major"],
+      "enabled": false
+    }
+  ]
+}
