@@ -24,6 +24,9 @@ concurrency:
   group: build-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+# Every job sets timeout-minutes: GitHub's default is 6 hours, and a stalled
+# install or image pull would hold the runner that long. Each limit is several
+# times the job's slowest green run (2026-11-01).
 jobs:
   # One job per architecture x target. arm64 builds natively on GitHub's arm runner
   # (no QEMU emulation). Each job builds, runs tests/smoke.sh in the image, and outside
@@ -31,6 +34,7 @@ jobs:
   image:
     name: image (${{ matrix.target }}, ${{ matrix.arch }})
     runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
+    timeout-minutes: 30
     permissions:
       contents: read
       packages: write
@@ -109,6 +113,7 @@ jobs:
   # scenario run from inside the image against the runner's Docker daemon.
   consumers:
     runs-on: ubuntu-24.04
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
@@ -160,6 +165,7 @@ jobs:
     if: github.event_name != 'pull_request'
     needs: [image, consumers]
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     permissions:
       contents: read
       packages: write
