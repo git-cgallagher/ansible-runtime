@@ -42,8 +42,12 @@ collections:
   # every collection's scenarios name (`driver: molecule-git-cgallagher`). Test tooling, so it's in
   # the `ci` target. ONE pin for both: the Dockerfile reads this commit and pip-installs the driver
   # from the same repo. Pinned by the commit of a tag, the SHA the consumers' setup-molecule
-  # action uses. Renovate can't bump a commit pin: bump it by hand, with the consumers.
-  # Used by: isc, windows, orchestration (Molecule).
+  # action uses too (isc windows-dc, windows domain-lab), so a lab on the runner and a scenario
+  # in the image run the same driver. Renovate can't bump a commit pin: bump it by hand, with the
+  # consumers' setup-molecule `uses:` lines.
+  # Used by, in this image: isc, orchestration and aws Molecule scenarios (docker kind). windows'
+  # Molecule labs run on the runner (KVM) and get the driver from setup-molecule; only its lint
+  # runs here.
   - name: https://github.com/git-cgallagher/ansible-collection-molecule.git
     type: git
-    version: 0a21eb793e3e5b50fe25c06fcbf76a7d202c634f  # v0.2.1
+    version: d894cf0d27719d8f26a3256cd23b562510d8ab08  # v0.3.1

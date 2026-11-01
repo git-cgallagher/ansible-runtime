@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.0.0 (2026-11-01)
+
+Major by this repo's semver rule: a package is removed.
+
+### Removed
+
+- `molecule-plugins[docker]` and the `docker` Python SDK. Every Molecule scenario in the
+  consumers (isc 9, windows 4, orchestration 1, aws 1) uses the `molecule-git-cgallagher`
+  driver, which uses the docker CLI, and no consumer uses a `community.docker.docker_*` module.
+
+### Changed
+
+- Molecule driver `molecule-git-cgallagher` + `git_cgallagher.molecule` v0.2.1 → v0.3.1 (`d894cf0`),
+  the version every consumer's setup-molecule uses after isc's `windows-dc` moves to it. 0.3.x
+  changed only the Windows lab roles (`ad_forest` on `microsoft.ad.group`, new `quiet_vm`).
+
 ## 0.5.0 (2026-11-01)
 
 ### Added
