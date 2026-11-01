@@ -34,7 +34,7 @@ docker run --rm "$RUNTIME_IMAGE" cat /usr/share/ansible-runtime/constraints.txt 
 pip install -c "$RUNNER_TEMP/constraints.txt" ansible-core molecule …
 ```
 
-That costs one image pull (~30 s). It's noise on a KVM lab and visible on a two-minute job, which is
+That costs one image pull. It's noise on a KVM lab and visible on a two-minute job, which is
 why short jobs move *into* the image instead.
 
 ## What a collection repo keeps
