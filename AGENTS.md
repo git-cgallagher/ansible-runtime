@@ -43,6 +43,9 @@ minor/major, Python minor, or a removed collection/package.
 
 ## Rules
 
+- Every CI job sets `timeout-minutes` (2026-11-01): GitHub's default is 6 hours, and a stalled `apt-get`,
+  pip or registry call would hold the runner that long. `image` and `consumers` get 30, `manifest` 15,
+  several times their slowest green run. A new job needs one too.
 - Every pin carries a comment saying why and who uses it. `DEPENDENCIES.md` "Current contents"
   changes in the same PR as a version change, Renovate's included.
 - `python.txt` is generated. Edit `python.in`, run `tests/lock.sh`.
