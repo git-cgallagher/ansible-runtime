@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.1 (2026-11-01)
+
+### Changed
+
+- Molecule driver `molecule-git-cgallagher` + `git_cgallagher.molecule` 0.2.0 → 0.2.1 (the commit
+  the consumers' `setup-molecule` uses; driver code unchanged, only the action's apt time limits).
+
 ## 0.2.0 (2026-11-01)
 
 ### Added
