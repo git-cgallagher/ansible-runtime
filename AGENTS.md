@@ -82,9 +82,10 @@ minor/major, Python minor, or a removed collection/package.
 
 ## TODO
 
-- Migrate consumers' tooling jobs (lint, argument-specs, kea-render, version-bump, docker-driver
-  Molecule, release) to `container: …:X.Y.Z-ci`: isc → windows → orchestration. Their required
-  check names must stay the same or their rulesets change in the same session.
-- Confirm Molecule's docker driver inside a real `container:` job (only `docker run` is tested here).
+- Consumers migrated 2026-11-01: isc (lint, kea-render, Molecule; isc PR #22), windows (lint;
+  windows PR #30), orchestration (Molecule; orchestration PR #16), each through its own
+  `.github/ci/runtime.sh` (`docker run --network host`, checkout at the same path), not a `container:`
+  job: isc's render test bind-mounts files into `docker run` and its Stork scenarios reach published
+  ports on 127.0.0.1. Bump their `RUNTIME_IMAGE` (tag + digest) after each release.
 - Windows KVM lab jobs: decide image-as-controller (`docker run --device /dev/kvm`) vs host.
 - Install the Mend Renovate app on this repo (owner, UI only).

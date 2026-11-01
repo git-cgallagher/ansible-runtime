@@ -35,7 +35,7 @@ alert (Dependabot alerts are on for the repo) names a fixed version.
 | community.library_inventory_filtering_v1 | 1.1.5 (community.docker dependency) |
 | community.general | 13.5.0 |
 | kubernetes.core | 6.6.0 |
-| git_cgallagher.molecule + molecule-git-cgallagher | 0.2.0 at commit `b2601b3` (both targets) |
+| git_cgallagher.molecule + molecule-git-cgallagher | 0.2.1 at commit `0a21eb7` (both targets) |
 | git_cgallagher.isc | 2.1.0 (`runtime` only) |
 | git_cgallagher.orchestration | 0.2.2 (`runtime` only) |
 | git_cgallagher.windows | 0.4.0 (`runtime` only) |

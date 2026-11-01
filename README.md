@@ -44,21 +44,27 @@ ANSIBLE_RUNTIME_IMAGE=ghcr.io/git-cgallagher/ansible-runtime:main-ci ar ansible-
 
 ## Use it in GitHub Actions
 
+The collections run it through a small wrapper, `.github/ci/runtime.sh` (copy it from
+`ansible-collection-isc`), with the image pinned by tag and digest:
+
 ```yaml
+env:
+  RUNTIME_IMAGE: ghcr.io/git-cgallagher/ansible-runtime:X.Y.Z-ci@sha256:<digest>
 jobs:
   lint:
     runs-on: ubuntu-24.04
-    container: ghcr.io/git-cgallagher/ansible-runtime:1.0.0-ci
     steps:
       - uses: actions/checkout@<sha>  # vX.Y.Z
-      - run: yamllint . && ansible-lint
+      - run: .github/ci/runtime.sh ansible-lint
 ```
 
-Molecule's docker driver should work in a `container:` job: GitHub mounts the runner's Docker
-socket into job containers and the image has the docker CLI. This repo's CI proves it with
-`docker run` on a runner; the first consumer migration confirms it in a real `container:` job.
+The wrapper is `docker run --network host`, with the checkout mounted at the same path, the
+runner's Docker socket, `TMPDIR` under the checkout and the checkout marked `safe.directory`.
+Use it rather than a `container:` job. A `container:` job puts the checkout at `/__w` and the
+controller on its own network, which breaks tests that bind-mount checkout files into containers
+they start (isc's Kea render) or reach published ports on `127.0.0.1` (isc's Stork scenarios).
 The collections live in Python's `site-packages`, so they're found even when a Molecule config
-replaces `ANSIBLE_COLLECTIONS_PATH` or the job overrides `HOME`.
+replaces `ANSIBLE_COLLECTIONS_PATH`.
 
 Keep each collection's `ansible-test sanity` matrix (`ansible-community/ansible-test-gh-action`
 across ansible-core versions) as it is. This image pins **one** ansible-core; that matrix
