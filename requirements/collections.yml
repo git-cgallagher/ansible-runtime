@@ -13,6 +13,11 @@ collections:
   # Used by: windows (gpo_backup, gpo_import), isc (kea_dhcp_msdns), lab DC scenarios.
   - name: ansible.windows
     version: 3.9.2
+  # community.windows: win_iis_website / win_iis_webapplication, which windows' setup_iis
+  # integration target uses to create the IIS test site (tests/integration/requirements.yml).
+  # Depends on ansible.windows (>=3,<4), pinned above.
+  - name: community.windows
+    version: 3.3.0
   # microsoft.ad: microsoft.ad.domain promotes the lab VMs to domain controllers.
   # Used by: windows domain-lab, isc kea_dhcp_msdns windows scenario, molecule ad_forest.
   - name: microsoft.ad

@@ -19,13 +19,15 @@ provenance attestations. What's inside, and how each piece is kept current:
   It has no `git_cgallagher.*` collections under test, so a repo always tests its own checkout
   and never a baked copy of its last release. The one exception is test tooling: the shared
   `molecule-git-cgallagher` driver and `git_cgallagher.molecule`, which every scenario names.
-- **runtime** (no suffix): running playbooks, and CI in anything that *uses* the roles.
+- **runtime** (no suffix): running playbooks, and CI in anything that *uses* the roles. It has
+  each collection's controller-side Python too (boto3/botocore for `git_cgallagher.aws`), at the
+  versions `python.txt` pins; the build fails if those don't satisfy what a collection declares.
 
 Tags: `X.Y.Z` (immutable, the pipeline refuses to overwrite one), `X.Y`, `latest`, `main`
 (moves on every merge and weekly rebuild) and `sha-<commit>`, each with `-ci` for the ci
 target. Pin `X.Y.Z` in CI.
 
-A new release of `git_cgallagher.isc`, `.windows` or `.orchestration` on Galaxy reaches the
+A new release of `git_cgallagher.isc`, `.windows`, `.orchestration` or `.aws` on Galaxy reaches the
 `runtime` image on its own: Renovate bumps the pin and merges once CI passes, and the pipeline
 releases the next patch version. Each [release](https://github.com/git-cgallagher/ansible-runtime/releases)
 lists the image's exact contents.

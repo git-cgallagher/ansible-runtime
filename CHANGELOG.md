@@ -1,9 +1,21 @@
 # Changelog
 
-## Unreleased
+## 0.4.0 (2026-11-01)
+
+### Added
+
+- `runtime` target: `git_cgallagher.aws` 0.3.0, with its controller-side Python, boto3 and
+  botocore 1.43.123 (in both targets; one lock).
+- `ci` target: community.windows 3.3.0 (windows' IIS integration tests now declare it; the
+  `consumers` check failed on `main` without it).
+- `tests/collection_requirements.py`: checks that the pinned Python packages satisfy every
+  collection's `requirements.txt`. It runs in the `runtime` build (a miss fails it), in `smoke.sh`
+  and against each consumer's `main` in the `consumers` job.
 
 ### Changed
 
+- python-dateutil 3.0.0 → 2.9.0.post0 (botocore needs `<3`); tzdata, which only dateutil 3 needed,
+  is gone.
 - CI: the `consumers` job also checks ansible-collection-aws (coverage, yamllint, ansible-lint),
   now that its Molecule job runs in this image. No image change.
 

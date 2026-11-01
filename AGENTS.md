@@ -12,6 +12,7 @@ Public repo; the new-public-repo baseline applies.
 | `requirements/` | every pin: `python.in`/`python.txt`, `collections.yml`, `collections-runtime.yml`, `apt.txt` |
 | `tests/smoke.sh` | runs in the image: versions equal the pins, no unpinned collections, tools present, playbooks parse |
 | `tests/coverage.py` | consumer repos' declared collections are all pinned, inside their ranges |
+| `tests/collection_requirements.py` | `python.txt` satisfies every collection's `requirements.txt` (run in the `runtime` build, `smoke.sh` and `consumers`) |
 | `tests/lock.sh` | regenerates `python.txt` inside the base image |
 | `tests/playbooks/` | syntax-check playbooks touching each collection |
 | `bin/ar` | local wrapper around `docker run` |
@@ -22,7 +23,8 @@ Public repo; the new-public-repo baseline applies.
 - `image (target, arch)`: 4 jobs. Build (amd64 on `ubuntu-24.04`, arm64 natively on
   `ubuntu-24.04-arm`), `tests/smoke.sh`, grype scan (amd64; fails on fixable critical). Outside PRs,
   push by digest.
-- `consumers`: builds `ci`, clones isc/windows/orchestration/aws at `main`, runs `tests/coverage.py`,
+- `consumers`: builds `ci`, clones isc/windows/orchestration/aws at `main`, runs `tests/coverage.py`
+  and `tests/collection_requirements.py`,
   yamllint + ansible-lint on isc, windows and aws, and one Molecule scenario (isc kea_dhcp, Debian 12)
   from inside the image against the runner's Docker.
 - `release`: not on PRs; see Releasing.
@@ -64,6 +66,17 @@ minor/major, Python minor, or a removed collection/package.
   this repo's `consumers` job fails on `main` (it reads consumers at `main`), which is the alarm.
 
 ## ⚠️ Gotchas
+
+- **One version per Python package, for every collection.** Collections declare floors in their
+  `requirements.txt`; `python.txt` pins the version. If a collection release raises a floor past
+  the pin, Renovate's bump PR for it fails `image (runtime, …)` and isn't automerged: bump the pin
+  (`python.in` + `tests/lock.sh`, or merge the monthly Python PR), then the bump goes through.
+  That's the intended failure, not a flake.
+- **botocore caps `python-dateutil<3`** while kubernetes accepts 3.x. Adding boto3 (0.4.0) made
+  `tests/lock.sh` backtrack into ancient botocore source releases that won't build
+  (`README.rst` not found), because pip-compile kept the old `python-dateutil==3.0.0` pin. Fix:
+  re-lock with `-P "python-dateutil<3"`. A fresh lock (Renovate's lock-file maintenance) resolves
+  it on its own.
 
 - **Collections live in site-packages, not `~/.ansible`.** The consumers' Molecule configs set
   `ANSIBLE_COLLECTIONS_PATH=…:~/.ansible/collections`, and GitHub `container:` jobs set

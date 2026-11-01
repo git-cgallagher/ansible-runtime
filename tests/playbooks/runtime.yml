@@ -20,3 +20,12 @@
     - git_cgallagher.isc.stork_server
     - git_cgallagher.windows.gpo_backup
     - git_cgallagher.windows.gpo_import
+
+- name: The aws module resolves
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Placeholder parameter
+      git_cgallagher.aws.ssm_parameter:
+        name: /example/not-a-secret
+        region: us-east-1

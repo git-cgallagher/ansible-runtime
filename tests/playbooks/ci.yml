@@ -7,6 +7,9 @@
   tasks:
     - name: ansible.windows
       ansible.windows.win_ping:
+    - name: community.windows
+      community.windows.win_psmodule:
+        name: example
     - name: microsoft.ad
       microsoft.ad.domain:
         dns_domain_name: example.test

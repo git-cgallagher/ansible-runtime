@@ -62,6 +62,11 @@ COPY requirements/collections-runtime.yml /tmp/requirements/collections-runtime.
 RUN site=$(python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])') \
  && ansible-galaxy collection install --no-cache -r /tmp/requirements/collections-runtime.yml -p "$site" \
  && rm -rf /root/.ansible
+# Each collection declares its Python needs (requirements.txt); python.txt pins one version of
+# each, shared by all of them. The build fails here if a pin doesn't satisfy every declaration,
+# e.g. a collection release that raises its boto3 floor past the lock.
+COPY tests/collection_requirements.py /tmp/collection_requirements.py
+RUN python /tmp/collection_requirements.py && rm /tmp/collection_requirements.py
 LABEL org.opencontainers.image.title="ansible-runtime" \
       org.opencontainers.image.description="Pinned Ansible toolchain plus the git_cgallagher.* collections, for running playbooks locally and in CI" \
       org.opencontainers.image.source="https://github.com/git-cgallagher/ansible-runtime" \

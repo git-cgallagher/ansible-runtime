@@ -144,6 +144,15 @@ jobs:
               consumers/ansible-collection-windows consumers/ansible-collection-orchestration \
               consumers/ansible-collection-aws
 
+      # Early warning: a collection raising a Python floor on main (say boto3) fails here
+      # before its Galaxy release reaches the runtime image's build.
+      - name: python.txt satisfies every consumer's requirements.txt
+        run: |
+          docker run --rm -v "$PWD":/src -w /src ansible-runtime:test \
+            python tests/collection_requirements.py consumers/ansible-collection-isc \
+              consumers/ansible-collection-windows consumers/ansible-collection-orchestration \
+              consumers/ansible-collection-aws
+
       - name: yamllint + ansible-lint (isc, windows, aws)
         run: |
           for r in ansible-collection-isc ansible-collection-windows ansible-collection-aws; do

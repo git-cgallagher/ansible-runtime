@@ -58,7 +58,11 @@ ANSIBLE_COLLECTIONS_PATH=/nonexistent HOME=/tmp \
   || fail "collections in site-packages are not on the search path"
 
 echo "== Python libraries the collections need"
-python -c 'import pypsrp, kubernetes, docker, yaml, jinja2; print("ok")'
+python -c 'import pypsrp, kubernetes, docker, yaml, jinja2, boto3, botocore; print("ok")'
+if [ "$target" = runtime ]; then
+  echo "== python.txt satisfies every collection's requirements.txt"
+  python tests/collection_requirements.py
+fi
 
 echo "== tools"
 ansible-lint --version | head -1
@@ -83,5 +87,7 @@ done
 if [ "$target" = runtime ]; then
   ansible-doc -t strategy git_cgallagher.orchestration.time_offset >/dev/null \
     || fail "time_offset strategy plugin does not load"
+  ansible-doc -t lookup git_cgallagher.aws.ssm_parameter >/dev/null \
+    || fail "aws ssm_parameter lookup does not load"
 fi
 echo "smoke ($target): OK"
