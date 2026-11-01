@@ -22,8 +22,8 @@ Public repo; the new-public-repo baseline applies.
 - `image (target, arch)`: 4 jobs. Build (amd64 on `ubuntu-24.04`, arm64 natively on
   `ubuntu-24.04-arm`), `tests/smoke.sh`, grype scan (amd64; fails on fixable critical). Outside PRs,
   push by digest.
-- `consumers`: builds `ci`, clones isc/windows/orchestration at `main`, runs `tests/coverage.py`,
-  yamllint + ansible-lint on isc and windows, and one Molecule scenario (isc kea_dhcp, Debian 12)
+- `consumers`: builds `ci`, clones isc/windows/orchestration/aws at `main`, runs `tests/coverage.py`,
+  yamllint + ansible-lint on isc, windows and aws, and one Molecule scenario (isc kea_dhcp, Debian 12)
   from inside the image against the runner's Docker.
 - `release`: not on PRs; see Releasing.
 - `manifest (target)`: not on PRs. Joins the two arches under the tags, refuses to overwrite an
