@@ -13,4 +13,8 @@ collections:
   # clusters, IIS).
   - name: git_cgallagher.windows
     version: 0.5.0
+  # git_cgallagher.aws: cross-account SSM Parameter Store lookup + module. Its Python needs
+  # (boto3, botocore) are pinned in python.in.
+  - name: git_cgallagher.aws
+    version: 0.3.0
   # git_cgallagher.molecule is in collections.yml (the `ci` target): it's test tooling.

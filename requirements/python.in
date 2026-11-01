@@ -23,3 +23,10 @@ pypsrp
 
 # kubernetes.core modules: kea_dhcp and Stork in Kubernetes mode (isc).
 kubernetes
+
+# AWS SDK: git_cgallagher.aws (runtime target). Its ssm_parameter module and lookup run on the
+# controller. The collection's requirements.txt sets the floor (boto3>=1.28.0, botocore>=1.31.0);
+# this lock picks the one version every collection gets, and the build fails if it doesn't
+# satisfy every installed collection's requirements.txt (tests/collection_requirements.py).
+boto3
+botocore
