@@ -1,6 +1,17 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 (2026-11-01)
+
+### Added
+
+- `openssl`, for isc's Kea render test (`tests/kea_dhcp/run.sh` makes a throwaway CA).
+
+### Changed
+
+- `runtime` target: git_cgallagher.isc 1.6.2 → 2.1.0; git_cgallagher.windows 0.2.0 (git
+  commit) → 0.4.0 from Galaxy.
+
+## 0.1.0 (2026-11-01)
 
 ### Added
 

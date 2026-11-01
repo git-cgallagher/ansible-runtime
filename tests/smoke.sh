@@ -71,6 +71,7 @@ have=$(python -c 'import json; from importlib.metadata import distribution as d;
 [ "$want" = "$have" ] || fail "molecule-git-cgallagher is at $have, collections.yml pins $want"
 docker --version
 git --version
+openssl version
 ssh -V
 
 echo "== playbooks that use each collection parse"
