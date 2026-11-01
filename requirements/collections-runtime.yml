@@ -5,12 +5,12 @@
 collections:
   # git_cgallagher.isc: Kea DHCP (kea_dhcp, kea_dhcp_msdns) and Stork roles.
   - name: git_cgallagher.isc
-    version: 2.1.0
+    version: 2.2.2
   # git_cgallagher.orchestration: the time_offset strategy plugin.
   - name: git_cgallagher.orchestration
     version: 0.2.2
   # git_cgallagher.windows (formerly .gpo): Windows Server roles (GPO backup/import, failover
   # clusters, IIS).
   - name: git_cgallagher.windows
-    version: 0.4.0
+    version: 0.5.0
   # git_cgallagher.molecule is in collections.yml (the `ci` target): it's test tooling.

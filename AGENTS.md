@@ -25,6 +25,7 @@ Public repo; the new-public-repo baseline applies.
 - `consumers`: builds `ci`, clones isc/windows/orchestration at `main`, runs `tests/coverage.py`,
   yamllint + ansible-lint on isc and windows, and one Molecule scenario (isc kea_dhcp, Debian 12)
   from inside the image against the runner's Docker.
+- `release`: not on PRs; see Releasing.
 - `manifest (target)`: not on PRs. Joins the two arches under the tags, refuses to overwrite an
   existing `X.Y.Z`, attests build provenance.
 - Triggers: PR, push to `main`, tag `vX.Y.Z`, weekly (Mon 06:00 UTC, moves `:main` / `:main-ci` only;
@@ -34,9 +35,18 @@ Public repo; the new-public-repo baseline applies.
 
 ## Releasing
 
-1. Merge the change; `:main` / `:main-ci` publish.
-2. Add a `## X.Y.Z` entry to `CHANGELOG.md` (in the change's PR).
-3. `git tag vX.Y.Z && git push origin vX.Y.Z` → `:X.Y.Z`, `:X.Y`, `:latest` (+ `-ci`).
+**Automatic (collection bumps):** a merge to `main` whose only change is `version:` lines in
+`requirements/collections-runtime.yml` (Renovate's automerged `git_cgallagher.*` PRs) is released
+by `build.yml`'s `release` job as the next patch version. It tags that commit's `sha-` images (no
+rebuild), then creates the git tag and a GitHub release through the API. These releases have no
+CHANGELOG entry: the GitHub release is the record.
+
+**By hand (everything else):**
+
+1. Merge the change, with a `## X.Y.Z` entry in `CHANGELOG.md` in the same PR; `:main` / `:main-ci` publish.
+2. Check the PR's merge commit is on `main` (`git log -1 origin/main`) **before tagging**.
+3. `git tag -a vX.Y.Z -m … <merge commit> && git push origin vX.Y.Z` → `:X.Y.Z`, `:X.Y`, `:latest`
+   (+ `-ci`), and the `release` job adds the GitHub release.
 
 Semver for the image: patch = rebuild/doc-only; minor = any dependency bump; major = ansible-core
 minor/major, Python minor, or a removed collection/package.
@@ -46,8 +56,8 @@ minor/major, Python minor, or a removed collection/package.
 - Every CI job sets `timeout-minutes` (2026-11-01): GitHub's default is 6 hours, and a stalled `apt-get`,
   pip or registry call would hold the runner that long. `image` and `consumers` get 30, `manifest` 15,
   several times their slowest green run. A new job needs one too.
-- Every pin carries a comment saying why and who uses it. `DEPENDENCIES.md` "Current contents"
-  changes in the same PR as a version change, Renovate's included.
+- Every pin carries a comment saying why and who uses it. Versions live only in the pin files and
+  the release notes (`tests/contents.py`); don't copy them into docs, where Renovate can't update them.
 - `python.txt` is generated. Edit `python.in`, run `tests/lock.sh`.
 - Never re-point a released `X.Y.Z` tag. Fix forward with a new version.
 - A consumer adding a collection: add the pin here first, then the consumer's change. Until then
@@ -67,6 +77,14 @@ minor/major, Python minor, or a removed collection/package.
   molecule gets SIGPIPE). Capture the output first.
 - **The image runs as root, deliberately.** GitHub `container:` jobs need it (the workspace and
   `/github/home` are root-owned) and so does the Docker socket. `bin/ar` runs it the same way.
+- **Renovate merges `git_cgallagher.*` bumps itself (2026-11-01, Chris's decision).** That's an
+  exception to the baseline's merge-by-hand rule, scoped to those PRs: `automerge` with
+  `platformAutomerge: false` (Renovate merges once every check passes; the repo's auto-merge setting
+  stays off), and the Renovate app (id 2740) is the only bypass actor on the "external contributor
+  review" ruleset (`pull_request` mode). "main protection" still requires every check. Nothing
+  happens until the Mend Renovate app is installed on this repo.
+- **A tag pushed with `GITHUB_TOKEN` starts no workflow.** That's why the automatic release tags the
+  already-built `sha-` images instead of pushing a tag and letting the tag build run.
 - **Dependabot security updates are OFF here; Dependabot alerts stay ON** (a deliberate exception
   to the public-repo baseline). Renovate reads the alerts (`vulnerabilityAlerts`) and opens the fix
   PRs; Dependabot would open duplicates and can't regenerate the hashed `python.txt`.

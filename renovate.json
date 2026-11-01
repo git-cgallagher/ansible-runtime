@@ -1,68 +1,124 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "description": "Renovate keeps every pin in this repo current. DEPENDENCIES.md explains each manifest.",
-  "extends": ["config:recommended", "helpers:pinGitHubActionDigests"],
+  "extends": [
+    "config:recommended",
+    "helpers:pinGitHubActionDigests"
+  ],
   "timezone": "America/New_York",
-  "schedule": ["* 0-5 1 * *"],
+  "schedule": [
+    "* 0-5 1 * *"
+  ],
   "dependencyDashboard": true,
-  "labels": ["dependencies"],
-  "constraints": { "python": "3.13" },
+  "labels": [
+    "dependencies"
+  ],
+  "constraints": {
+    "python": "3.13"
+  },
   "pip-compile": {
-    "managerFilePatterns": ["/^requirements/python\\.txt$/"]
+    "managerFilePatterns": [
+      "/^requirements/python\\.txt$/"
+    ]
   },
   "ansible-galaxy": {
-    "managerFilePatterns": ["/^requirements/collections(-runtime)?\\.yml$/"]
+    "managerFilePatterns": [
+      "/^requirements/collections(-runtime)?\\.yml$/"
+    ]
   },
   "lockFileMaintenance": {
     "enabled": true,
-    "schedule": ["* 0-5 1 * *"]
+    "schedule": [
+      "* 0-5 1 * *"
+    ]
   },
   "vulnerabilityAlerts": {
     "enabled": true,
-    "schedule": ["at any time"],
-    "labels": ["security"]
+    "schedule": [
+      "at any time"
+    ],
+    "labels": [
+      "security"
+    ]
   },
   "packageRules": [
     {
       "description": "GitHub Actions: one grouped PR a month, as in every other repo.",
-      "matchManagers": ["github-actions"],
+      "matchManagers": [
+        "github-actions"
+      ],
       "groupName": "GitHub Actions"
     },
     {
       "description": "Third-party collections: one grouped PR a month.",
-      "matchManagers": ["ansible-galaxy"],
+      "matchManagers": [
+        "ansible-galaxy"
+      ],
       "groupName": "Ansible collections"
     },
     {
-      "description": "Our own collections: their own PR, so a release of isc or orchestration ships promptly.",
-      "matchManagers": ["ansible-galaxy"],
-      "matchPackageNames": ["git_cgallagher.**"],
+      "description": "Our own collections: their own PR at any time, merged by Renovate itself once every check passes (platformAutomerge off: the repo's auto-merge setting stays off). build.yml's release job then releases the merge as the next patch version, so a Galaxy release reaches the image with no human step. Renovate is the only bypass actor on the 'external contributor review' ruleset.",
+      "matchManagers": [
+        "ansible-galaxy"
+      ],
+      "matchPackageNames": [
+        "git_cgallagher.**"
+      ],
       "groupName": "git_cgallagher collections",
-      "schedule": ["at any time"]
+      "schedule": [
+        "at any time"
+      ],
+      "automerge": true,
+      "automergeType": "pr",
+      "platformAutomerge": false,
+      "automergeSchedule": [
+        "at any time"
+      ]
     },
     {
       "description": "Python tooling (lint, Molecule, libraries): one grouped PR a month.",
-      "matchManagers": ["pip-compile"],
+      "matchManagers": [
+        "pip-compile"
+      ],
       "groupName": "Python packages"
     },
     {
       "description": "ansible-core minor/major: always its own PR. It changes the controller for every job and needs the python.in range widened.",
-      "matchManagers": ["pip-compile"],
-      "matchPackageNames": ["ansible-core"],
-      "matchUpdateTypes": ["minor", "major"],
+      "matchManagers": [
+        "pip-compile"
+      ],
+      "matchPackageNames": [
+        "ansible-core"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "major"
+      ],
       "groupName": null,
-      "labels": ["dependencies", "ansible-core"]
+      "labels": [
+        "dependencies",
+        "ansible-core"
+      ]
     },
     {
       "description": "Base images: digest and patch bumps grouped monthly.",
-      "matchManagers": ["dockerfile"],
+      "matchManagers": [
+        "dockerfile"
+      ],
       "groupName": "Base images"
     },
     {
       "description": "Python minor (3.13 -> 3.14) is a deliberate, manual change: it needs constraints.python, tests/lock.sh and the Dockerfile moved together. Digests still update.",
-      "matchManagers": ["dockerfile"],
-      "matchDepNames": ["python"],
-      "matchUpdateTypes": ["minor", "major"],
+      "matchManagers": [
+        "dockerfile"
+      ],
+      "matchDepNames": [
+        "python"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "major"
+      ],
       "enabled": false
     }
   ]

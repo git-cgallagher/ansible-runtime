@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.3.0 (2026-11-01)
+
+### Added
+
+- Automatic releases: Renovate merges `git_cgallagher.*` collection bumps once every check passes,
+  and `build.yml`'s new `release` job releases such a merge as the next patch version. Every
+  release, by hand or automatic, gets a GitHub release listing the image's contents
+  (`tests/contents.py`).
+
+### Changed
+
+- `runtime` target: git_cgallagher.isc 2.1.0 → 2.2.2, git_cgallagher.windows 0.4.0 → 0.5.0.
+- `DEPENDENCIES.md` no longer keeps a version table; the release notes do.
+
 ## 0.2.1 (2026-11-01)
 
 ### Changed
