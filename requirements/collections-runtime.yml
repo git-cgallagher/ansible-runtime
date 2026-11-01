@@ -16,5 +16,4 @@ collections:
   - name: https://github.com/git-cgallagher/ansible-collection-windows.git
     type: git
     version: 00e66cd32d6567153def4a1a2ca58233cb80d339
-  # git_cgallagher.molecule (the Molecule driver collection, formerly testlab) is not here yet:
-  # it has no GitHub remote. Add it once it's pushed and tagged.
+  # git_cgallagher.molecule is in collections.yml (the `ci` target): it's test tooling.

@@ -8,7 +8,7 @@ Public repo; the new-public-repo baseline applies.
 
 | Path | What |
 |---|---|
-| `Dockerfile` | `base` → `ci` (toolchain + third-party collections) and `runtime` (+ `git_cgallagher.*`) |
+| `Dockerfile` | `base` → `ci` (toolchain + third-party collections + the Molecule driver) and `runtime` (+ the other `git_cgallagher.*`) |
 | `requirements/` | every pin: `python.in`/`python.txt`, `collections.yml`, `collections-runtime.yml`, `apt.txt` |
 | `tests/smoke.sh` | runs in the image: versions equal the pins, no unpinned collections, tools present, playbooks parse |
 | `tests/coverage.py` | consumer repos' declared collections are all pinned, inside their ranges |
@@ -68,6 +68,13 @@ minor/major, Python minor, or a removed collection/package.
   to the public-repo baseline). Renovate reads the alerts (`vulnerabilityAlerts`) and opens the fix
   PRs; Dependabot would open duplicates and can't regenerate the hashed `python.txt`.
 - **`git_cgallagher.windows` is pinned by commit**: no tag, not on Galaxy. Renovate can't bump it.
+- **The Molecule driver is in the `ci` target, pinned once by commit.** The consumers' scenarios
+  say `driver: molecule-git-cgallagher` (shared `.config/molecule/config.yml`), so without it every
+  Molecule run fails `Failed to find driver` (the first CI run on PR #1 did, after isc moved to
+  the driver). `collections.yml` pins `ansible-collection-molecule` at a commit; the Dockerfile
+  reads that commit to pip-install the driver, and `smoke.sh` checks both agree. Keep it at the
+  SHA the consumers' `setup-molecule` action uses, and bump it by hand (Renovate can't).
+  `ansible-collection-molecule`'s own CI must not use this image: it would test the baked copy.
 - `ansible-lint` and `yamllint` versions here decide what passes in every consumer once they
   adopt the image; read a Renovate PR's `consumers` job before merging it.
 
@@ -78,5 +85,5 @@ minor/major, Python minor, or a removed collection/package.
   check names must stay the same or their rulesets change in the same session.
 - Confirm Molecule's docker driver inside a real `container:` job (only `docker run` is tested here).
 - Windows KVM lab jobs: decide image-as-controller (`docker run --device /dev/kvm`) vs host.
-- Add `git_cgallagher.molecule` once it has a remote and a release.
+- `git_cgallagher.windows` is on Galaxy since 0.3.0: switch its git pin to `name:` + `version:`.
 - Install the Mend Renovate app on this repo (owner, UI only).

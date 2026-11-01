@@ -12,3 +12,5 @@
   checks, grype scan, multi-arch manifests on GHCR with build provenance.
 - Renovate config for every pin (Dockerfile, pip-compile, ansible-galaxy, GitHub Actions).
 - `bin/ar` local wrapper.
+- The shared Molecule driver, `molecule-git-cgallagher` + `git_cgallagher.molecule` 0.2.0
+  (`ci` target, one commit pin), which the consumers' scenarios now require.

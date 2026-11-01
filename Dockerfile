@@ -1,6 +1,7 @@
 # syntax=docker/dockerfile:1
 # Ansible runtime image. Two targets from the same pinned toolchain:
-#   ci      : ansible-core, linters, Molecule, Python libs, third-party collections.
+#   ci      : ansible-core, linters, Molecule + the molecule-git-cgallagher driver, Python libs,
+#             third-party collections.
 #             Collection repos run their own CI in this one, so they test their checkout.
 #   runtime : ci + the git_cgallagher.* collections, for running playbooks.
 # Every version comes from requirements/; Renovate bumps the two FROM digests below.
@@ -38,6 +39,13 @@ COPY requirements/collections.yml /tmp/requirements/collections.yml
 RUN site=$(python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])') \
  && ansible-galaxy collection install --no-cache -r /tmp/requirements/collections.yml -p "$site" \
  && rm -rf /root/.ansible
+
+# The molecule-git-cgallagher driver (pip) lives in the same repo as git_cgallagher.molecule,
+# so it takes that collection's commit from collections.yml: one pin for both. A git install
+# can't be hash-checked; the commit SHA is the pin. --no-deps: its only dependency (molecule)
+# is already installed from python.txt.
+RUN sha=$(python -c 'import yaml; print(next(c["version"] for c in yaml.safe_load(open("/tmp/requirements/collections.yml"))["collections"] if c["name"].endswith("/ansible-collection-molecule.git")))') \
+ && pip install --no-deps "molecule-git-cgallagher @ git+https://github.com/git-cgallagher/ansible-collection-molecule.git@$sha"
 
 WORKDIR /work
 ENTRYPOINT ["/usr/bin/tini", "--"]

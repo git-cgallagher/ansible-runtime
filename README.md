@@ -16,8 +16,9 @@ provenance attestations. What's inside, and how each piece is kept current:
 ## Which image
 
 - **`-ci`**: CI in the collection repos themselves (`ansible-collection-isc`, `-windows`, …).
-  It has no `git_cgallagher.*` collections, so a repo always tests its own checkout and never
-  a baked copy of its last release.
+  It has no `git_cgallagher.*` collections under test, so a repo always tests its own checkout
+  and never a baked copy of its last release. The one exception is test tooling: the shared
+  `molecule-git-cgallagher` driver and `git_cgallagher.molecule`, which every scenario names.
 - **runtime** (no suffix): running playbooks, and CI in anything that *uses* the roles.
 
 Tags: `X.Y.Z` (immutable, the pipeline refuses to overwrite one), `X.Y`, `latest`, `main`
