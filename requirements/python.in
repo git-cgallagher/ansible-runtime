@@ -30,3 +30,14 @@ kubernetes
 # satisfy every installed collection's requirements.txt (tests/collection_requirements.py).
 boto3
 botocore
+
+# Test tools that consumers' tests/unit + tests/integration requirements.txt declare. ansible-test
+# installs those itself in its own containers (ranges); these pins are what the same tests get in
+# this image, and what tests/collection_requirements.py checks the ranges against.
+# moto (SSM + STS backends only) + flask/flask-cors for moto_server: git_cgallagher.aws units and
+# integration. Not moto[server]: its cfn-lint chain sends pip backtracking (aws AGENTS.md).
+moto[ssm,sts]
+flask
+flask-cors
+# pytest: ansible-test units in every collection with unit tests (aws).
+pytest

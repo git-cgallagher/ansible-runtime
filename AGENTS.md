@@ -12,7 +12,9 @@ Public repo; the new-public-repo baseline applies.
 | `requirements/` | every pin: `python.in`/`python.txt`, `collections.yml`, `collections-runtime.yml`, `apt.txt` |
 | `tests/smoke.sh` | runs in the image: versions equal the pins, no unpinned collections, tools present, playbooks parse |
 | `tests/coverage.py` | consumer repos' declared collections are all pinned, inside their ranges |
-| `tests/collection_requirements.py` | `python.txt` satisfies every collection's `requirements.txt` (run in the `runtime` build, `smoke.sh` and `consumers`) |
+| `tests/collection_requirements.py` | `python.txt` satisfies every collection's `requirements.txt`, and in the `consumers` job their `tests/unit` + `tests/integration` requirements too (run in the `runtime` build, `smoke.sh` and `consumers`) |
+| `build/derive_pins.py` | writes `/usr/share/ansible-runtime/{constraints.txt,collections.yml}` in the image (derived, for runner jobs) |
+| `docs/SHARED-DEPENDENCIES.md` | the shared dependency model: every version chosen here; phases (tracking issue #8) |
 | `tests/lock.sh` | regenerates `python.txt` inside the base image |
 | `tests/playbooks/` | syntax-check playbooks touching each collection |
 | `bin/ar` | local wrapper around `docker run` |
@@ -61,11 +63,19 @@ minor/major, Python minor, or a removed collection/package.
 - Every pin carries a comment saying why and who uses it. Versions live only in the pin files and
   the release notes (`tests/contents.py`); don't copy them into docs, where Renovate can't update them.
 - `python.txt` is generated. Edit `python.in`, run `tests/lock.sh`.
+- **Every version is chosen here** (docs/SHARED-DEPENDENCIES.md, issue #8). A consumer file that
+  pins an exact version is a bug to remove, not a second source. Exceptions are listed in that doc.
 - Never re-point a released `X.Y.Z` tag. Fix forward with a new version.
 - A consumer adding a collection: add the pin here first, then the consumer's change. Until then
   this repo's `consumers` job fails on `main` (it reads consumers at `main`), which is the alarm.
 
 ## ⚠️ Gotchas
+
+- **`python.txt` can't be a pip constraints file.** Its `--hash` lines put pip in
+  `--require-hashes` mode, which then refuses any package the lock doesn't list (tested 2026-11-01).
+  That's why the image carries a hash-free derived `constraints.txt`.
+- **The derived `collections.yml` includes a git source** (`ansible-collection-molecule`), so
+  `ansible-galaxy collection install -r` needs `git` (GitHub runners have it; `python:*-slim` doesn't).
 
 - **One version per Python package, for every collection.** Collections declare floors in their
   `requirements.txt`; `python.txt` pins the version. If a collection release raises a floor past

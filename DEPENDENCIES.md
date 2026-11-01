@@ -1,5 +1,9 @@
 # Dependencies
 
+**This repo is the only place a version is chosen** for any `git_cgallagher.*` repo's tooling.
+Consumers either run in the image or read its derived pin files; their own files declare ranges
+only. The model, its exceptions and the rollout: [docs/SHARED-DEPENDENCIES.md](docs/SHARED-DEPENDENCIES.md).
+
 Everything in the image is pinned in one of five places. Each file has a comment on every entry
 saying **why it's there and who uses it**. Read those for the detail; this page is the map.
 
@@ -8,7 +12,7 @@ saying **why it's there and who uses it**. Read those for the detail; this page 
 | Base OS + Python 3.13 | `Dockerfile` (`FROM python:3.13-slim-trixie@sha256:…`) | image digest | Renovate (`dockerfile`), monthly |
 | docker CLI | `Dockerfile` (`FROM docker:X.Y.Z-cli@sha256:…`) | version + digest | Renovate (`dockerfile`), monthly |
 | Debian packages | `requirements/apt.txt` | **not pinned** (Debian drops old versions); they follow the base digest and the weekly rebuild | weekly scheduled build |
-| Python packages (ansible-core, ansible-lint, yamllint, Molecule, pypsrp, kubernetes, docker SDK, boto3/botocore) | `requirements/python.in` → `requirements/python.txt` | every package, transitive ones too, at one version + hashes; installed with `--require-hashes` | Renovate (`pip-compile`), monthly + lock-file maintenance |
+| Python packages (ansible-core, ansible-lint, yamllint, Molecule, pypsrp, kubernetes, docker SDK, boto3/botocore; test tools moto, flask, flask-cors, pytest) | `requirements/python.in` → `requirements/python.txt` | every package, transitive ones too, at one version + hashes; installed with `--require-hashes` | Renovate (`pip-compile`), monthly + lock-file maintenance |
 | Third-party collections | `requirements/collections.yml` | exact version (a bare version is an exact pin to ansible-galaxy); transitive ones listed too | Renovate (`ansible-galaxy`), monthly |
 | Our collections (`git_cgallagher.*`) | `requirements/collections-runtime.yml` | exact version | Renovate (`ansible-galaxy`) as soon as released, **merged by Renovate and released automatically** (below) |
 | Molecule driver (`molecule-git-cgallagher` pip package + `git_cgallagher.molecule`) | `requirements/collections.yml` (one commit pin; the Dockerfile reuses it for the pip driver) | commit SHA of a tag | by hand, to the SHA the consumers' `setup-molecule` action pins |
@@ -36,6 +40,18 @@ docker run --rm -v "$PWD":/src -w /src ghcr.io/git-cgallagher/ansible-runtime:ma
 ```
 
 (There used to be a hand-kept table here. Renovate can't edit it, so it went stale on every bump.)
+
+## Derived pin files, for jobs outside the image
+
+Every image carries `/usr/share/ansible-runtime/constraints.txt` (`python.txt` without hashes) and
+`collections.yml` (that target's collection pins), written by `build/derive_pins.py` at build time.
+A job that has to run on the runner (a KVM lab, a release) reads them from the same `RUNTIME_IMAGE`
+it already pins:
+
+```bash
+docker run --rm "$RUNTIME_IMAGE" cat /usr/share/ansible-runtime/constraints.txt > "$RUNNER_TEMP/constraints.txt"
+pip install -c "$RUNNER_TEMP/constraints.txt" ansible-core molecule
+```
 
 ## Ranges vs pins
 
