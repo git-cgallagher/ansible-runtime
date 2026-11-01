@@ -10,38 +10,32 @@ saying **why it's there and who uses it**. Read those for the detail; this page 
 | Debian packages | `requirements/apt.txt` | **not pinned** (Debian drops old versions); they follow the base digest and the weekly rebuild | weekly scheduled build |
 | Python packages (ansible-core, ansible-lint, yamllint, Molecule, pypsrp, kubernetes, docker SDK) | `requirements/python.in` → `requirements/python.txt` | every package, transitive ones too, at one version + hashes; installed with `--require-hashes` | Renovate (`pip-compile`), monthly + lock-file maintenance |
 | Third-party collections | `requirements/collections.yml` | exact version (a bare version is an exact pin to ansible-galaxy); transitive ones listed too | Renovate (`ansible-galaxy`), monthly |
-| Our collections (`git_cgallagher.*`) | `requirements/collections-runtime.yml` | exact version | Renovate (`ansible-galaxy`) as soon as released |
+| Our collections (`git_cgallagher.*`) | `requirements/collections-runtime.yml` | exact version | Renovate (`ansible-galaxy`) as soon as released, **merged by Renovate and released automatically** (below) |
 | Molecule driver (`molecule-git-cgallagher` pip package + `git_cgallagher.molecule`) | `requirements/collections.yml` (one commit pin; the Dockerfile reuses it for the pip driver) | commit SHA of a tag | by hand, to the SHA the consumers' `setup-molecule` action pins |
 | GitHub Actions | `.github/workflows/*.yml` | commit SHA + `# vX.Y.Z` comment | Renovate (`github-actions`), monthly |
+
+**Your own collections reach the image with no human step.** A Galaxy release of
+`git_cgallagher.isc`, `.windows` or `.orchestration` → Renovate opens a PR bumping
+`collections-runtime.yml` (any time, not monthly) → when every check passes, Renovate merges it
+itself → `build.yml`'s `release` job sees a merge that only changes those version lines, and
+releases it as the next patch version (`:X.Y.Z`, `:X.Y`, `:latest`, + `-ci`) with a GitHub release
+listing the contents. The collections' CI then picks it up when their `RUNTIME_IMAGE` is bumped.
 
 Security fixes skip the monthly schedule: Renovate opens them as soon as a GitHub vulnerability
 alert (Dependabot alerts are on for the repo) names a fixed version.
 
 ## Current contents
 
-| | Version |
-|---|---|
-| Python | 3.13 (Debian 13 "trixie" slim) |
-| ansible-core | 2.21.5 |
-| ansible-lint | 26.10.1 |
-| yamllint | 1.38.0 |
-| molecule / molecule-plugins | 26.10.0 / 26.10.12 |
-| pypsrp | 0.9.1 |
-| kubernetes | 37.0.1 |
-| docker (SDK) / docker CLI | 7.2.0 / 29.9.2 |
-| ansible.windows | 3.9.2 |
-| microsoft.ad | 1.12.1 |
-| community.docker | 5.4.0 |
-| community.library_inventory_filtering_v1 | 1.1.5 (community.docker dependency) |
-| community.general | 13.5.0 |
-| kubernetes.core | 6.6.0 |
-| git_cgallagher.molecule + molecule-git-cgallagher | 0.2.1 at commit `0a21eb7` (both targets) |
-| git_cgallagher.isc | 2.1.0 (`runtime` only) |
-| git_cgallagher.orchestration | 0.2.2 (`runtime` only) |
-| git_cgallagher.windows | 0.4.0 (`runtime` only) |
+Each [GitHub release](https://github.com/git-cgallagher/ansible-runtime/releases) lists exactly what
+its image contains: Python, every package `python.in` names, the Molecule driver, the docker CLI and
+every collection. `tests/contents.py` writes that table from inside the image, so it reports what
+is installed, not what the files say. For an unreleased build:
 
-Keep this table in step with the files in the same PR (Renovate PRs included: edit the table
-on the Renovate branch before merging).
+```bash
+docker run --rm -v "$PWD":/src -w /src ghcr.io/git-cgallagher/ansible-runtime:main python tests/contents.py
+```
+
+(There used to be a hand-kept table here. Renovate can't edit it, so it went stale on every bump.)
 
 ## Ranges vs pins
 

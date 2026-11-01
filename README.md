@@ -25,6 +25,11 @@ Tags: `X.Y.Z` (immutable, the pipeline refuses to overwrite one), `X.Y`, `latest
 (moves on every merge and weekly rebuild) and `sha-<commit>`, each with `-ci` for the ci
 target. Pin `X.Y.Z` in CI.
 
+A new release of `git_cgallagher.isc`, `.windows` or `.orchestration` on Galaxy reaches the
+`runtime` image on its own: Renovate bumps the pin and merges once CI passes, and the pipeline
+releases the next patch version. Each [release](https://github.com/git-cgallagher/ansible-runtime/releases)
+lists the image's exact contents.
+
 ## Use it locally
 
 `bin/ar` runs any command in the image in the current directory, with your ssh agent and the

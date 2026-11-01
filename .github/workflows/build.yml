@@ -3,6 +3,9 @@ name: build
 # PR: build both targets on both architectures, test, scan. Nothing is pushed.
 # main: the same, then push :main and :sha-<short> (ci target: :main-ci, :sha-<short>-ci).
 # Tag vX.Y.Z: push :X.Y.Z, :X.Y, :latest (+ -ci variants), refusing to overwrite an existing X.Y.Z.
+# Release: a tag push gets a GitHub release listing the image's contents. A merge to main that
+# only bumps git_cgallagher.* versions (Renovate's automerged PRs) is released as the next patch
+# version automatically: the images just built for that commit get the version tags.
 # Weekly: rebuild main so Debian security updates land without a dependency change.
 on:
   pull_request:
@@ -237,3 +240,87 @@ jobs:
           subject-name: ${{ env.IMAGE }}
           subject-digest: ${{ steps.create.outputs.digest }}
           push-to-registry: true
+
+  # Runs after the manifests exist. On a tag: a GitHub release for it. On a merge to main whose
+  # only change is git_cgallagher.* version lines in collections-runtime.yml: the next patch
+  # version, made by tagging this commit's sha- images (already built, tested and attested) and
+  # creating the git tag + GitHub release through the API. A tag pushed with GITHUB_TOKEN starts
+  # no workflow, so nothing rebuilds. Anything else on main is released by hand (AGENTS.md).
+  release:
+    if: github.event_name == 'push'
+    needs: manifest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write  # the git tag and the GitHub release
+      packages: write  # the version tags on GHCR
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Decide the version
+        id: version
+        env:
+          REF: ${{ github.ref }}
+        run: |
+          if [[ "$REF" == refs/tags/v* ]]; then
+            echo "version=${REF#refs/tags/v}" >> "$GITHUB_OUTPUT"; echo "auto=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          files=$(git diff --name-only HEAD^1 HEAD)
+          changed=$(git diff -U0 HEAD^1 HEAD -- requirements/collections-runtime.yml | grep -E '^[-+][^-+]' || true)
+          if [ "$files" != requirements/collections-runtime.yml ] || grep -qvE '^[-+] +version: ' <<<"$changed"; then
+            echo "Not a collection-version-only merge; release by hand if needed."; exit 0
+          fi
+          last=$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n1)
+          IFS=. read -r major minor patch <<<"${last#v}"
+          echo "version=$major.$minor.$((patch + 1))" >> "$GITHUB_OUTPUT"; echo "auto=true" >> "$GITHUB_OUTPUT"
+          echo "Collection bump after $last:"; echo "$changed"
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069  # v4.4.1
+        if: steps.version.outputs.version != ''
+      - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6  # v4.7.0
+        if: steps.version.outputs.version != ''
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Tag this commit's images as the new version
+        if: steps.version.outputs.auto == 'true'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          short=${GITHUB_SHA::7}
+          for suffix in "" -ci; do
+            if docker buildx imagetools inspect "$IMAGE:$VERSION$suffix" >/dev/null 2>&1; then
+              echo "::error::$IMAGE:$VERSION$suffix already exists"; exit 1
+            fi
+            docker buildx imagetools create \
+              -t "$IMAGE:$VERSION$suffix" -t "$IMAGE:${VERSION%.*}$suffix" -t "$IMAGE:latest$suffix" \
+              "$IMAGE:sha-$short$suffix"
+          done
+
+      - name: Create the GitHub release
+        if: steps.version.outputs.version != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+          AUTO: ${{ steps.version.outputs.auto }}
+        run: |
+          if gh release view "v$VERSION" >/dev/null 2>&1; then echo "v$VERSION already released"; exit 0; fi
+          {
+            if [ "$AUTO" = true ]; then
+              echo "Automatic release: a git_cgallagher.* collection version bump."
+              echo
+              git diff -U0 HEAD^1 HEAD -- requirements/collections-runtime.yml | grep -E '^[-+] ' | sed 's/^/    /'
+            else
+              echo "See CHANGELOG.md for what changed."
+            fi
+            echo
+            echo "\`$IMAGE:$VERSION\` (runtime) and \`$IMAGE:$VERSION-ci\` (ci: same, without the git_cgallagher collections marked runtime-only). Contents:"
+            echo
+            docker run --rm -v "$PWD":/src -w /src "$IMAGE:$VERSION" python tests/contents.py
+          } > notes.md
+          gh release create "v$VERSION" --target "$GITHUB_SHA" --title "v$VERSION" --notes-file notes.md
