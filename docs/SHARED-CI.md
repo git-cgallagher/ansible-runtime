@@ -129,24 +129,16 @@ the job.
    image's `constraints.txt` out of it;
 2. runs `setup-molecule` at a pinned commit, with `kvm: 'true'` and a `lab-dir` on the runner's
    large `/mnt` disk. The driver and `git_cgallagher.molecule` come from that commit, the Python
-   packages at the image's versions, and the other collections from the image, one of two ways:
-   - **`collections-image: <RUNTIME_IMAGE>`**: the action copies them out of the image and runs
-     every `ansible-galaxy` call offline, so `requirements:` (the repo's own files) only checks
-     them. A collection or version the image lacks fails the step ("Pin it in ansible-runtime's
-     requirements/collections.yml first") instead of being downloaded. The action finds them
-     through `ansible_collections.__path__` in the image's Python, which this repo's
-     `tests/smoke.sh` checks is one directory holding every pinned collection, and it refuses a
-     `runtime` image.
-   - **Without it**, the job passes the image's `collections.yml`, minus `git_cgallagher.molecule`,
-     as `requirements:`, and the action downloads those versions from Galaxy.
+   packages at the image's versions, and the other collections from the image through
+   **`collections-image: <RUNTIME_IMAGE>`**: the action copies them out of the image and runs
+   every `ansible-galaxy` call offline, so `requirements:` (the repo's own files) only checks
+   them. A collection or version the image lacks fails the step ("Pin it in ansible-runtime's
+   requirements/collections.yml first") instead of being downloaded. The action finds them
+   through `ansible_collections.__path__` in the image's Python, which this repo's
+   `tests/smoke.sh` checks is one directory holding every pinned collection, and it refuses a
+   `runtime` image. No KVM lab downloads from Galaxy (all three since 2026-11-02: the driver's
+   own CI, isc PR 34, windows PR 56).
 3. runs the scenario, and on failure `vm-screendump` (same commit) before the VMs are destroyed.
-
-As of 2026-11-02 the driver's own CI uses `collections-image`, and both consumer labs are moving to
-it: windows' `domain-lab` in
-[ansible-collection-windows PR 56](https://github.com/git-cgallagher/ansible-collection-windows/pull/56)
-and isc's `windows-dc` in
-[ansible-collection-isc PR 34](https://github.com/git-cgallagher/ansible-collection-isc/pull/34).
-Once both merge, no KVM lab downloads from Galaxy and this paragraph goes.
 
 ## The pins a consumer holds
 
