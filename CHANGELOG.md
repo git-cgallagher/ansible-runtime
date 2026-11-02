@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.1.0 (2026-11-02)
+
+### Added
+
+- `runtime` target: `git_cgallagher.vmware` 0.1.0, with its controller-side Python, pyvmomi
+  9.1.1.0 (both targets; one lock). The `consumers` check covers ansible-collection-vmware too
+  (coverage, Python requirements, yamllint + ansible-lint).
+
+### Changed
+
+- Molecule driver `molecule-git-cgallagher` + `git_cgallagher.molecule` v0.3.1 → v0.3.2 (`3cefe7f`),
+  the version isc's `windows-dc` and windows' `domain-lab` moved to (a `quiet_vm` fix).
+- `runtime` target: git_cgallagher.isc 2.2.2 → 2.2.3, git_cgallagher.windows 0.5.0 → 0.11.0
+  (Renovate isn't installed yet, so these were behind Galaxy).
+
 ## 1.0.0 (2026-11-01)
 
 Major by this repo's semver rule: a package is removed.

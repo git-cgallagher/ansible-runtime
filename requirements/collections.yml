@@ -45,9 +45,9 @@ collections:
   # action uses too (isc windows-dc, windows domain-lab), so a lab on the runner and a scenario
   # in the image run the same driver. Renovate can't bump a commit pin: bump it by hand, with the
   # consumers' setup-molecule `uses:` lines.
-  # Used by, in this image: isc, orchestration and aws Molecule scenarios (docker kind). windows'
+  # Used by, in this image: isc, orchestration, aws and vmware Molecule scenarios (docker kind). windows'
   # Molecule labs run on the runner (KVM) and get the driver from setup-molecule; only its lint
   # runs here.
   - name: https://github.com/git-cgallagher/ansible-collection-molecule.git
     type: git
-    version: d894cf0d27719d8f26a3256cd23b562510d8ab08  # v0.3.1
+    version: 3cefe7f27d47aada6dc88b56ad2a4a42c5f33260  # v0.3.2

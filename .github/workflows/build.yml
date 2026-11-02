@@ -133,7 +133,7 @@ jobs:
 
       - name: Check out the consumer collections (main)
         run: |
-          for r in ansible-collection-isc ansible-collection-windows ansible-collection-orchestration ansible-collection-aws; do
+          for r in ansible-collection-isc ansible-collection-windows ansible-collection-orchestration ansible-collection-aws ansible-collection-vmware; do
             git clone --quiet --depth 1 "https://github.com/git-cgallagher/$r" "consumers/$r"
           done
 
@@ -142,7 +142,7 @@ jobs:
           docker run --rm -v "$PWD":/src -w /src ansible-runtime:test \
             python tests/coverage.py consumers/ansible-collection-isc \
               consumers/ansible-collection-windows consumers/ansible-collection-orchestration \
-              consumers/ansible-collection-aws
+              consumers/ansible-collection-aws consumers/ansible-collection-vmware
 
       # Early warning: a collection raising a Python floor on main (say boto3) fails here
       # before its Galaxy release reaches the runtime image's build.
@@ -151,11 +151,11 @@ jobs:
           docker run --rm -v "$PWD":/src -w /src ansible-runtime:test \
             python tests/collection_requirements.py consumers/ansible-collection-isc \
               consumers/ansible-collection-windows consumers/ansible-collection-orchestration \
-              consumers/ansible-collection-aws
+              consumers/ansible-collection-aws consumers/ansible-collection-vmware
 
-      - name: yamllint + ansible-lint (isc, windows, aws)
+      - name: yamllint + ansible-lint (isc, windows, aws, vmware)
         run: |
-          for r in ansible-collection-isc ansible-collection-windows ansible-collection-aws; do
+          for r in ansible-collection-isc ansible-collection-windows ansible-collection-aws ansible-collection-vmware; do
             echo "::group::$r"
             docker run --rm -v "$PWD/consumers/$r":/work ansible-runtime:test \
               bash -c 'yamllint . && ansible-lint'

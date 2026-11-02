@@ -85,7 +85,7 @@ ANSIBLE_COLLECTIONS_PATH=/nonexistent HOME=/tmp \
   || fail "collections in site-packages are not on the search path"
 
 echo "== Python libraries the collections need"
-python -c 'import pypsrp, kubernetes, yaml, jinja2, boto3, botocore; print("ok")'
+python -c 'import pypsrp, kubernetes, yaml, jinja2, boto3, botocore, pyVmomi; print("ok")'
 if [ "$target" = runtime ]; then
   echo "== python.txt satisfies every collection's requirements.txt"
   python tests/collection_requirements.py

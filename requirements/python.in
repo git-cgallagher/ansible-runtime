@@ -24,6 +24,10 @@ pypsrp
 # kubernetes.core modules: kea_dhcp and Stork in Kubernetes mode (isc).
 kubernetes
 
+# vSphere API: git_cgallagher.vmware's vm_disk / vm_disk_info (runtime target), which run on the
+# controller. The collection's requirements.txt sets the floor (pyvmomi>=9.0.0).
+pyvmomi
+
 # AWS SDK: git_cgallagher.aws (runtime target). Its ssm_parameter module and lookup run on the
 # controller. The collection's requirements.txt sets the floor (boto3>=1.28.0, botocore>=1.31.0);
 # this lock picks the one version every collection gets, and the build fails if it doesn't

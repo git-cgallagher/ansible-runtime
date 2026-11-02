@@ -5,16 +5,20 @@
 collections:
   # git_cgallagher.isc: Kea DHCP (kea_dhcp, kea_dhcp_msdns) and Stork roles.
   - name: git_cgallagher.isc
-    version: 2.2.2
+    version: 2.2.3
   # git_cgallagher.orchestration: the time_offset strategy plugin.
   - name: git_cgallagher.orchestration
     version: 0.2.2
   # git_cgallagher.windows (formerly .gpo): Windows Server roles (GPO backup/import, failover
   # clusters, IIS).
   - name: git_cgallagher.windows
-    version: 0.5.0
+    version: 0.11.0
   # git_cgallagher.aws: cross-account SSM Parameter Store lookup + module. Its Python needs
   # (boto3, botocore) are pinned in python.in.
   - name: git_cgallagher.aws
     version: 0.3.0
+  # git_cgallagher.vmware: vSphere VM disks (vm_disk, vm_disk_info). Its Python needs (pyvmomi)
+  # are pinned in python.in.
+  - name: git_cgallagher.vmware
+    version: 0.1.0
   # git_cgallagher.molecule is in collections.yml (the `ci` target): it's test tooling.
