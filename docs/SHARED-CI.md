@@ -199,6 +199,10 @@ A driver release is finished when the labs and the image both run it:
 2. **Consumer lab PRs** pin the driver PR's *head* commit in `setup-molecule@` and `vm-screendump@`
    (isc `windows-dc.yml`, windows `domain-lab.yml`) and prove it on real labs. isc's lab only runs by
    hand: `gh workflow run windows-dc.yml --repo git-cgallagher/ansible-collection-isc --ref <branch>`.
+   Every push to the driver PR moves its head, so each lab PR has to re-pin and re-run its labs
+   (windows' `domain-lab` takes over half an hour; in the v0.5.0 round, two late pushes restarted it
+   twice). Once the lab PRs are pinned, push to the driver PR only for real fixes, and leave
+   docs-only follow-ups to a PR after the tag.
 3. **Merge the driver PR and tag it `vX.Y.Z`**: on the PR's head if `main` didn't move meanwhile
    (its tree then equals the merge commit's), so the consumers' pins stay valid; otherwise on the
    merge commit, and re-pin the consumers.
