@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.3.0 (2026-11-02)
+
+### Changed
+
+- Molecule driver `molecule-git-cgallagher` + `git_cgallagher.molecule` v0.4.0 → v0.5.0 (`fe24140`),
+  in the same round as isc's `windows-dc` and windows' `domain-lab`. v0.5.0's setup-molecule takes
+  the KVM labs' collections out of this image (`collections-image`) instead of Galaxy, through
+  `ansible_collections.__path__` (smoke-checked since PR #16); the docker kind is unchanged.
+
 ## 1.2.0 (2026-11-02)
 
 ### Changed
