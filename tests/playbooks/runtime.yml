@@ -29,3 +29,14 @@
       git_cgallagher.aws.ssm_parameter:
         name: /example/not-a-secret
         region: us-east-1
+
+- name: The vmware modules resolve
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Placeholder disk info
+      git_cgallagher.vmware.vm_disk_info:
+        hostname: vcenter.example.com
+        username: example
+        password: example-not-secret
+        name: example-vm
