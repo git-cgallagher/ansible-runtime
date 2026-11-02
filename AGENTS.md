@@ -70,8 +70,9 @@ minor/major, Python minor, or a removed collection/package.
 - A consumer adding a collection: add the pin here first, then the consumer's change. Until then
   this repo's `consumers` job fails on `main` (it reads consumers at `main`), which is the alarm.
 - `docs/SHARED-CI.md` describes the consumers' wiring: which jobs run in the image, how the KVM
-  labs get the driver, the driver round. A change to that wiring (a job moving into or out of the
-  image, a new consumer, setup-molecule's `collections-image` landing) updates it in the same round.
+  labs get the driver and their collections, the driver round. A change to that wiring (a job moving
+  into or out of the image, a new consumer, a lab moving to setup-molecule's `collections-image`)
+  updates it in the same round.
 
 ## ⚠️ Gotchas
 

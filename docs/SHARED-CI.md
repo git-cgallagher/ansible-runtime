@@ -38,7 +38,7 @@ flowchart TB
   DRV -- "commit pinned in requirements/collections.yml" --> PINS
   CIIMG -- "RUNTIME_IMAGE, tag + digest" --> IN
   CIIMG -- "constraints.txt, collections.yml" --> RUN
-  CIIMG -- "constraints.txt, collections.yml" --> LAB
+  CIIMG -- "constraints.txt, collections" --> LAB
   ACT -- "pinned to the image's driver commit" --> LAB
 ```
 
@@ -77,7 +77,9 @@ With the driver, a scenario describes its platforms and nothing else: no `create
   and `quiet_vm` (Windows Update and Defender real-time scanning off).
 - **`setup-molecule`**, a composite action that installs Python, ansible-core, Molecule, the driver
   and the collection, the last two from the action's own commit, under an optional pip constraints
-  file. With `kvm: 'true'` it enables KVM and installs QEMU too.
+  file. With `kvm: 'true'` it enables KVM and installs QEMU too, and with `collections-image` it
+  copies the other collections out of an ansible-runtime `-ci` image instead of downloading them
+  from Galaxy.
 - **`vm-screendump`**, a composite action a failed lab runs to print each VM's run state and QEMU
   log and save its screen.
 
@@ -113,31 +115,35 @@ container, so Molecule steps that share state go in one call: `molecule test`, o
 `runtime.sh bash -c '…'`.
 
 The driver's own repo is the exception: its CI never runs in the image, which would test the baked
-driver rather than its checkout. Its lint, Molecule and lab jobs run on the runner under the image's
-`constraints.txt`, and the Molecule and lab jobs install the checkout through
-`./.github/actions/setup-molecule`.
+driver rather than its checkout. Its lint, Molecule and lab jobs run on the runner and install the
+checkout through `./.github/actions/setup-molecule`, with the image's `constraints.txt` and
+`collections-image`, and with Galaxy blocked in `/etc/hosts`, so any download left in them fails
+the job.
 
 ### The KVM labs
 
 `windows_vm` platforms need `/dev/kvm`, so the Windows labs run on the runner: isc's `windows-dc`
-(run by hand), windows' `domain-lab`, and the driver's own `windows-lab`. In isc and windows, a lab
-job:
+(run by hand), windows' `domain-lab`, and the driver's own `windows-lab`. A lab job:
 
-1. reads the image's `constraints.txt`, and its `collections.yml` minus `git_cgallagher.molecule`;
+1. takes `RUNTIME_IMAGE` from `ansible-test.yml` (`ci.yml` in the driver repo) and copies the
+   image's `constraints.txt` out of it;
 2. runs `setup-molecule` at a pinned commit, with `kvm: 'true'` and a `lab-dir` on the runner's
-   large `/mnt` disk: the driver and `git_cgallagher.molecule` come from that commit, everything else
-   at the image's versions;
+   large `/mnt` disk. The driver and `git_cgallagher.molecule` come from that commit, the Python
+   packages at the image's versions, and the other collections from the image, one of two ways:
+   - **`collections-image: <RUNTIME_IMAGE>`**: the action copies them out of the image and runs
+     every `ansible-galaxy` call offline, so `requirements:` (the repo's own files) only checks
+     them. A collection or version the image lacks fails the step ("Pin it in ansible-runtime's
+     requirements/collections.yml first") instead of being downloaded. The action finds them
+     through `ansible_collections.__path__` in the image's Python, which this repo's
+     `tests/smoke.sh` checks is one directory holding every pinned collection, and it refuses a
+     `runtime` image.
+   - **Without it**, the job passes the image's `collections.yml`, minus `git_cgallagher.molecule`,
+     as `requirements:`, and the action downloads those versions from Galaxy.
 3. runs the scenario, and on failure `vm-screendump` (same commit) before the VMs are destroyed.
 
-The driver's own lab installs the collections from its requirements file instead, since it tests its
-checkout of `git_cgallagher.molecule`.
-
-Today step 2 downloads the third-party collections from Galaxy.
-[ansible-collection-molecule PR 22](https://github.com/git-cgallagher/ansible-collection-molecule/pull/22)
-(setup-molecule's `collections-image` input, open on 2026-11-02) copies them out of the image
-instead, with every `ansible-galaxy` call offline: a collection the image lacks fails the step
-rather than being downloaded. It finds them through `ansible_collections.__path__` in the image's
-Python, which this repo's `tests/smoke.sh` checks is one directory holding every pinned collection.
+As of 2026-11-02 the driver's own CI uses `collections-image`, windows' `domain-lab` is moving to
+it ([ansible-collection-windows PR 56](https://github.com/git-cgallagher/ansible-collection-windows/pull/56),
+open), and isc's `windows-dc` still downloads from Galaxy.
 
 ## The pins a consumer holds
 
@@ -222,7 +228,8 @@ A driver release is finished when the labs and the image both run it:
    `.molecule-collections` first in `ANSIBLE_COLLECTIONS_PATH`. Each scenario is then its platforms,
    `converge.yml` and `verify.yml`; the driver's README has a full example.
 5. **Windows labs** go in a workflow of their own on the runner, as in
-   [The KVM labs](#the-kvm-labs), with `setup-molecule` at the image's driver commit.
+   [The KVM labs](#the-kvm-labs), with `setup-molecule` at the image's driver commit and
+   `collections-image` set.
 6. **Required checks:** add the new jobs to the repo's "main protection" ruleset once they've run,
    so their names are known.
 
@@ -246,7 +253,9 @@ A driver release is finished when the labs and the image both run it:
 | Molecule tests a stale copy of the collection | `.molecule-collections` isn't first in `ANSIBLE_COLLECTIONS_PATH`; Molecule copies the project into `~/.ansible/collections` on every run | fix the base config |
 | The docker scenarios and the labs disagree about the driver | a driver round stopped halfway | finish it ([the round](#a-driver-release-and-the-round-after-it)) |
 | A Windows VM dies during first boot | QEMU exited or the guest stopped; the run fails at the next poll, not at the deadline | the failure quotes `<platform>-qemu.log`; `vm-screendump` prints the run state and log |
-| A lab fails downloading a collection (timeout, 502) | the labs still install third-party collections from Galaxy | re-run; [ansible-collection-molecule PR 22](https://github.com/git-cgallagher/ansible-collection-molecule/pull/22) removes the download |
+| A lab fails downloading a collection (timeout, 502) | the lab doesn't set `collections-image`, so it installs collections from Galaxy | re-run; move the lab to `collections-image` ([the KVM labs](#the-kvm-labs)) |
+| setup-molecule fails with "Pin it in ansible-runtime's requirements/collections.yml first" | with `collections-image`, a requirements file names a collection, or a version, that the image doesn't have | pin it here, release the image, bump `RUNTIME_IMAGE` |
+| setup-molecule refuses the image as "the runtime target" | `collections-image` got the `runtime` image, which holds the `git_cgallagher.*` collections under test | pass the `-ci` image |
 | A job that loops over ansible-core versions can't resolve | the constraints also pin `resolvelib`, whose range differs per ansible-core minor | drop both `ansible-core` and `resolvelib` from the constraints ([SHARED-DEPENDENCIES.md](SHARED-DEPENDENCIES.md), exception 2) |
 
 ## Where to read more
