@@ -71,6 +71,12 @@ minor/major, Python minor, or a removed collection/package.
 
 ## ⚠️ Gotchas
 
+- **`ansible_collections.__path__` is a contract** (2026-11-02). setup-molecule 0.5.0's
+  `collections-image` input copies the KVM labs' collections out of this image from that one
+  directory (site-packages), instead of downloading them from Galaxy. `smoke.sh` checks it's a
+  single directory holding every pinned collection. Moving collections elsewhere breaks the labs:
+  change the action in the same round.
+
 - **The driver pin moves with the labs, in one round.** `collections.yml`'s
   `ansible-collection-molecule` commit must equal the setup-molecule commit in isc's `windows-dc`
   and windows' `domain-lab`. A driver release that moves the labs without this pin leaves the image

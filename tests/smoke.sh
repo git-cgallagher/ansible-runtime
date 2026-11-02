@@ -84,6 +84,32 @@ ANSIBLE_COLLECTIONS_PATH=/nonexistent HOME=/tmp \
   ansible-doc -t module community.docker.docker_container >/dev/null \
   || fail "collections in site-packages are not on the search path"
 
+# Contract: setup-molecule (collections-image input) copies the KVM labs' collections out of
+# this image from `ansible_collections.__path__`. It must be exactly one directory holding every
+# pinned collection of this target. Changing where collections live breaks the labs: change both.
+echo "== ansible_collections.__path__ is one directory with every pinned collection"
+python - "$target" <<'PY'
+import pathlib, sys, yaml
+import ansible_collections
+paths = list(ansible_collections.__path__)
+if len(paths) != 1:
+    sys.exit(f"ansible_collections.__path__ has {len(paths)} entries, want 1: {paths}")
+root = pathlib.Path(paths[0])
+files = ["requirements/collections.yml"] + (["requirements/collections-runtime.yml"] if sys.argv[1] == "runtime" else [])
+missing = []
+for f in files:
+    for c in yaml.safe_load(open(f))["collections"]:
+        name = c["name"]
+        if c.get("type") == "git":
+            name = "git_cgallagher." + name.rstrip("/").removesuffix(".git").rsplit("/", 1)[1].removeprefix("ansible-collection-")
+        ns, coll = name.split(".")
+        if not (root / ns / coll / "MANIFEST.json").is_file():
+            missing.append(name)
+if missing:
+    sys.exit(f"not under {root}: {missing}")
+print(root)
+PY
+
 echo "== Python libraries the collections need"
 python -c 'import pypsrp, kubernetes, yaml, jinja2, boto3, botocore, pyVmomi; print("ok")'
 if [ "$target" = runtime ]; then
