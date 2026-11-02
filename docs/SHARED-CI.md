@@ -11,8 +11,8 @@ Every `git_cgallagher.*` collection builds its CI from two shared pieces:
 
 This page is the view from a collection repo: where its jobs run, which pins it holds, and how a
 release of either piece reaches it. Each repo's own docs own the detail
-([where to read more](#where-to-read-more)). It names no versions on purpose: they live in the pin
-files and the release notes, and a copy here would go stale on the next bump.
+([where to read more](#where-to-read-more)). It names no current versions on purpose: they live in
+the pin files and the release notes, and a copy here would go stale on the next bump.
 
 ## At a glance
 
@@ -141,9 +141,12 @@ the job.
      as `requirements:`, and the action downloads those versions from Galaxy.
 3. runs the scenario, and on failure `vm-screendump` (same commit) before the VMs are destroyed.
 
-As of 2026-11-02 the driver's own CI uses `collections-image`, windows' `domain-lab` is moving to
-it ([ansible-collection-windows PR 56](https://github.com/git-cgallagher/ansible-collection-windows/pull/56),
-open), and isc's `windows-dc` still downloads from Galaxy.
+As of 2026-11-02 the driver's own CI uses `collections-image`, and both consumer labs are moving to
+it: windows' `domain-lab` in
+[ansible-collection-windows PR 56](https://github.com/git-cgallagher/ansible-collection-windows/pull/56)
+and isc's `windows-dc` in
+[ansible-collection-isc PR 34](https://github.com/git-cgallagher/ansible-collection-isc/pull/34).
+Once both merge, no KVM lab downloads from Galaxy and this paragraph goes.
 
 ## The pins a consumer holds
 
