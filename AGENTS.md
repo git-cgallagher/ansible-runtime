@@ -71,6 +71,13 @@ minor/major, Python minor, or a removed collection/package.
 
 ## ⚠️ Gotchas
 
+- **The driver pin moves with the labs, in one round.** `collections.yml`'s
+  `ansible-collection-molecule` commit must equal the setup-molecule commit in isc's `windows-dc`
+  and windows' `domain-lab`. A driver release that moves the labs without this pin leaves the image
+  behind (happened with v0.3.2, 2026-11-02). Consumers' labs filter `git_cgallagher.molecule` out of
+  the image's `collections.yml`, so a short gap doesn't break them, but the docker scenarios in the
+  image then run an older driver than the labs.
+
 - **Each `runtime.sh` call in a consumer is a fresh container.** Molecule's state under
   `~/.ansible/tmp` doesn't carry over between calls, so a separate `molecule prepare` after
   `molecule create` falls back to SSH. Use one `molecule test`, or one
