@@ -12,11 +12,11 @@ ansible-core>=2.21,<2.22
 ansible-lint
 yamllint
 
-# Molecule + the docker driver: every role scenario in isc and windows.
+# Molecule: every scenario in isc, windows, orchestration and aws. They all use the
+# molecule-git-cgallagher driver (collections.yml), whose docker kind shells out to the docker
+# CLI and reaches containers over community.docker's CLI-based `docker` connection, so neither
+# molecule-plugins nor the docker SDK is needed (both removed in 1.0.0).
 molecule
-molecule-plugins[docker]
-# Docker SDK: molecule-plugins' docker driver and community.docker's docker_api modules.
-docker
 
 # psrp connection: every Windows target (windows gpo_* roles, isc kea_dhcp_msdns, lab DCs).
 pypsrp

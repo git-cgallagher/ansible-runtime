@@ -621,15 +621,7 @@ cryptography==50.0.2 \
 distro==1.9.0 \
     --hash=sha256:2fa77c6fd8940f116ee1d6b94a2f90b13b5ea8d019b98bc8bafdcabcdd9bdbed \
     --hash=sha256:7bffd925d65168f85027d8da9af6bddab658135b840670a223589bc0c8ef02b2
-    # via
-    #   ansible-lint
-    #   selinux
-docker==7.2.0 \
-    --hash=sha256:a3f45fdeb9165e2d25d9a1d02ddf3bc70fb572cf5ebbf9b58558c22caf29b71f \
-    --hash=sha256:cebb93773d334f778e023a7ee352a8d6e13ab1bd3b863a4d4a59dec897df43ac
-    # via
-    #   -r requirements/python.in
-    #   molecule-plugins
+    # via ansible-lint
 durationpy==0.11 \
     --hash=sha256:181898e1ae282e288f0a2291829656bf1b6b3aadf30a97993b85db4943642905 \
     --hash=sha256:a739fe2b8972c250ff72f8e2c488d18cf25f7b852f49ee76048775d5171df30c
@@ -995,12 +987,6 @@ mdurl==0.1.2 \
 molecule==26.10.0 \
     --hash=sha256:32533aaba78c29eed80bcaab5d03ff63fe48b8f43071cf77953f391e0732d439 \
     --hash=sha256:deb351b11f1b329ae3b3c856d5b1c1d9a9d8f8d40ba717c77e54b1778b4557d2
-    # via
-    #   -r requirements/python.in
-    #   molecule-plugins
-molecule-plugins==26.10.12 \
-    --hash=sha256:03f79df9f7d6d6107ad9507f6c58724bbd18c21afb6f020fc532361b343ea333 \
-    --hash=sha256:a618b60016eac397d8e279eeb5c494a9cee6d33103dbe5222891df81657759f1
     # via -r requirements/python.in
 moto==5.2.5 \
     --hash=sha256:391857257d5dac144334013c2c10e599def5f0562f553e979160140bd7bd9cf6 \
@@ -1651,9 +1637,7 @@ requests==2.34.2 \
     --hash=sha256:2a0d60c172f83ac6ab31e4554906c0f3b3588d37b5cb939b1c061f4907e278e0 \
     --hash=sha256:f288924cae4e29463698d6d60bc6a4da69c89185ad1e0bcc4104f584e960b9ed
     # via
-    #   docker
     #   kubernetes
-    #   molecule-plugins
     #   moto
     #   pypsrp
     #   requests-oauthlib
@@ -1816,10 +1800,6 @@ s3transfer==0.19.3 \
     --hash=sha256:24eb7535804306355e31c952a90022bf5b2f9d760f9a11062c7493a217c08553 \
     --hash=sha256:8326acc3d056d7f7b8a37110c7d2aea41f67e83f6ae79cd3b5fbcca34c726406
     # via boto3
-selinux==0.3.0 \
-    --hash=sha256:2a88b337ac46ad0f06f557b2806c3df62421972f766673dd8bf26732fb75a9ea \
-    --hash=sha256:ecf7add45c939e9dda682c390a2cd0a845c94a4793a2cce9e8870d4ee9501f99
-    # via molecule-plugins
 six==1.17.0 \
     --hash=sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274 \
     --hash=sha256:ff70335d468e7eb6ec65b95b99d3a2836546063f63acc5171de367e834932a81
@@ -1847,7 +1827,6 @@ urllib3==2.8.0 \
     --hash=sha256:63bf2ead4c879426ebf22ef2a781eeb4aa3b4ae798a0435506f8687fd5bb9b63
     # via
     #   botocore
-    #   docker
     #   kubernetes
     #   requests
     #   responses

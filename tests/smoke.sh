@@ -85,7 +85,7 @@ ANSIBLE_COLLECTIONS_PATH=/nonexistent HOME=/tmp \
   || fail "collections in site-packages are not on the search path"
 
 echo "== Python libraries the collections need"
-python -c 'import pypsrp, kubernetes, docker, yaml, jinja2, boto3, botocore; print("ok")'
+python -c 'import pypsrp, kubernetes, yaml, jinja2, boto3, botocore; print("ok")'
 if [ "$target" = runtime ]; then
   echo "== python.txt satisfies every collection's requirements.txt"
   python tests/collection_requirements.py
@@ -95,7 +95,7 @@ echo "== tools"
 ansible-lint --version | head -1
 yamllint --version
 molecule --version | head -1
-drivers=$(molecule drivers 2>&1); grep -qw docker <<<"$drivers" || fail "molecule has no docker driver"
+drivers=$(molecule drivers 2>&1)
 grep -q molecule-git-cgallagher <<<"$drivers" || fail "molecule has no molecule-git-cgallagher driver"
 want=$(python -c 'import yaml; print(next(c["version"] for c in yaml.safe_load(open("requirements/collections.yml"))["collections"] if c["name"].endswith("/ansible-collection-molecule.git")))')
 have=$(python -c 'import json; from importlib.metadata import distribution as d; print(json.loads(d("molecule-git-cgallagher").read_text("direct_url.json"))["vcs_info"]["commit_id"])')
