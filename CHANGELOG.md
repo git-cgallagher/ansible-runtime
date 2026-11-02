@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.2.0 (2026-11-02)
+
+### Changed
+
+- Molecule driver `molecule-git-cgallagher` + `git_cgallagher.molecule` v0.3.2 → v0.4.0 (`ab9538d`),
+  in the same round as isc's `windows-dc` and windows' `domain-lab`. v0.4.0 changes only the
+  `windows_vm` kind and the `vm-screendump` action (QEMU under a supervisor, a dead or stopped VM
+  fails the first-boot wait at once); the docker kind the image's scenarios use is unchanged.
+
 ## 1.1.0 (2026-11-02)
 
 ### Added
