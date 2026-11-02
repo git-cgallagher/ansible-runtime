@@ -50,4 +50,4 @@ collections:
   # runs here.
   - name: https://github.com/git-cgallagher/ansible-collection-molecule.git
     type: git
-    version: 3cefe7f27d47aada6dc88b56ad2a4a42c5f33260  # v0.3.2
+    version: ab9538db70ddb0786723d60da1f1f8fac8d0bcfc  # v0.4.0
