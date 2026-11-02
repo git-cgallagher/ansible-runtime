@@ -13,6 +13,11 @@ Both are built for `linux/amd64` (GitHub runners) and `linux/arm64` (Apple Silic
 provenance attestations. What's inside, and how each piece is kept current:
 [DEPENDENCIES.md](DEPENDENCIES.md).
 
+How this image and the shared Molecule driver
+([ansible-collection-molecule](https://github.com/git-cgallagher/ansible-collection-molecule)) make
+up a collection's CI, from where each job runs to the round that follows a driver release:
+[docs/SHARED-CI.md](docs/SHARED-CI.md).
+
 ## Which image
 
 - **`-ci`**: CI in the collection repos themselves (`ansible-collection-isc`, `-windows`, …).

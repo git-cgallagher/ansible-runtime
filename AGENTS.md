@@ -15,6 +15,7 @@ Public repo; the new-public-repo baseline applies.
 | `tests/collection_requirements.py` | `python.txt` satisfies every collection's `requirements.txt`, and in the `consumers` job their `tests/unit` + `tests/integration` requirements too (run in the `runtime` build, `smoke.sh` and `consumers`) |
 | `build/derive_pins.py` | writes `/usr/share/ansible-runtime/{constraints.txt,collections.yml}` in the image (derived, for runner jobs) |
 | `docs/SHARED-DEPENDENCIES.md` | the shared dependency model: every version chosen here; phases (tracking issue #8) |
+| `docs/SHARED-CI.md` | the consumers' view of this image and the Molecule driver together: where each job runs, the pins a consumer holds, release rounds, adding a repo, troubleshooting |
 | `tests/lock.sh` | regenerates `python.txt` inside the base image |
 | `tests/playbooks/` | syntax-check playbooks touching each collection |
 | `bin/ar` | local wrapper around `docker run` |
@@ -25,10 +26,10 @@ Public repo; the new-public-repo baseline applies.
 - `image (target, arch)`: 4 jobs. Build (amd64 on `ubuntu-24.04`, arm64 natively on
   `ubuntu-24.04-arm`), `tests/smoke.sh`, grype scan (amd64; fails on fixable critical). Outside PRs,
   push by digest.
-- `consumers`: builds `ci`, clones isc/windows/orchestration/aws at `main`, runs `tests/coverage.py`
-  and `tests/collection_requirements.py`,
-  yamllint + ansible-lint on isc, windows and aws, and one Molecule scenario (isc kea_dhcp, Debian 12)
-  from inside the image against the runner's Docker.
+- `consumers`: builds `ci`, clones isc/windows/orchestration/aws/vmware at `main`, runs
+  `tests/coverage.py` and `tests/collection_requirements.py`,
+  yamllint + ansible-lint on isc, windows, aws and vmware, and one Molecule scenario (isc kea_dhcp,
+  Debian 12) from inside the image against the runner's Docker.
 - `release`: not on PRs; see Releasing.
 - `manifest (target)`: not on PRs. Joins the two arches under the tags, refuses to overwrite an
   existing `X.Y.Z`, attests build provenance.
@@ -68,6 +69,9 @@ minor/major, Python minor, or a removed collection/package.
 - Never re-point a released `X.Y.Z` tag. Fix forward with a new version.
 - A consumer adding a collection: add the pin here first, then the consumer's change. Until then
   this repo's `consumers` job fails on `main` (it reads consumers at `main`), which is the alarm.
+- `docs/SHARED-CI.md` describes the consumers' wiring: which jobs run in the image, how the KVM
+  labs get the driver, the driver round. A change to that wiring (a job moving into or out of the
+  image, a new consumer, setup-molecule's `collections-image` landing) updates it in the same round.
 
 ## ⚠️ Gotchas
 
