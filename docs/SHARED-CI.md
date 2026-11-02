@@ -18,25 +18,27 @@ files and the release notes, and a copy here would go stale on the next bump.
 
 ```mermaid
 flowchart TB
+  subgraph MOL["ansible-collection-molecule, one tag"]
+    DRV["molecule-git-cgallagher driver<br/>+ git_cgallagher.molecule"]
+    ACT["setup-molecule and<br/>vm-screendump actions"]
+  end
   subgraph RT["ansible-runtime"]
     PINS["requirements/: every version"]
-    IMG["image X.Y.Z-ci: toolchain, third-party collections, the driver<br/>image X.Y.Z: the same, plus the git_cgallagher.* collections"]
-    PINS --> IMG
-  end
-  subgraph MOL["ansible-collection-molecule, one tag"]
-    DRV["molecule-git-cgallagher driver + git_cgallagher.molecule"]
-    ACT["setup-molecule and vm-screendump actions"]
+    CIIMG["image X.Y.Z-ci: the toolchain,<br/>third-party collections, the driver"]
+    RTIMG["image X.Y.Z: the same, plus<br/>the git_cgallagher.* collections"]
+    PINS --> CIIMG
+    PINS --> RTIMG
   end
   subgraph CON["a collection repo's CI"]
     IN["in the image, through .github/ci/runtime.sh:<br/>lint, Molecule docker scenarios, build"]
-    RUN["on the runner: releases, argument specs"]
-    LAB["on the runner: KVM labs (windows_vm)"]
-    MAT["ansible-test matrix: not pinned by the image"]
+    RUN["on the runner:<br/>releases, argument specs"]
+    LAB["on the runner:<br/>KVM labs (windows_vm)"]
+    MAT["ansible-test matrix:<br/>not pinned by the image"]
   end
-  DRV -- "commit pinned in requirements/collections.yml" --> IMG
-  IMG -- "RUNTIME_IMAGE, tag + digest" --> IN
-  IMG -- "constraints.txt, collections.yml" --> RUN
-  IMG -- "constraints.txt, collections.yml" --> LAB
+  DRV -- "commit pinned in requirements/collections.yml" --> PINS
+  CIIMG -- "RUNTIME_IMAGE, tag + digest" --> IN
+  CIIMG -- "constraints.txt, collections.yml" --> RUN
+  CIIMG -- "constraints.txt, collections.yml" --> LAB
   ACT -- "pinned to the image's driver commit" --> LAB
 ```
 
