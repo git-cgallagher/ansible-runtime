@@ -88,7 +88,7 @@ Merge one at a time on the Galaxy-publishing repos and wait for each release run
 
 | Repo | Into the image (`runtime.sh`) | On the runner, with `-c` constraints | Delete |
 |---|---|---|---|
-| aws | `lint` (`pip install ansible-core ansible-lint yamllint -r requirements.txt`), `build` | `release.yml` (`pip install "ansible-core>=2.18"`) | — |
+| aws, vmware | `lint` (`pip install ansible-core ansible-lint yamllint -r requirements.txt`), `build` | `release.yml` (`pip install "ansible-core>=2.18"`) | — |
 | isc | — | `argument-specs` (minus ansible-core), `windows-dc` (setup-molecule `constraints`), `release.yml` | `.github/ci/requirements.txt` |
 | windows | `argument-specs` (`pip install ansible-core`) | `domain-lab` (setup-molecule `constraints`; none today), `release.yml` | — |
 | orchestration | — | `galaxy-publish.yml` (`ansible-core==2.21.5`, a second pin) | `extensions/molecule/requirements.txt` |
@@ -101,13 +101,26 @@ How each repo reads the pin: a runner job takes `RUNTIME_IMAGE` from `ansible-te
 (`ci.yml` in molecule) with `sed -n 's/^ *RUNTIME_IMAGE: //p'`, so that one line stays the only
 place it's set, including in `release.yml` and `argument-specs.yml`, which are separate workflows.
 
-**Not yet: collection pins on runner jobs that use setup-molecule** (windows `domain-lab`, isc
-`windows-dc`, molecule's own jobs). Those still install collections from their `requirements.yml`
-ranges, because the derived `collections.yml` pins `git_cgallagher.molecule` at the image's commit
-(v0.2.1), which differs from the setup-molecule versions those labs use (isc v0.2.1, windows v0.3.1,
-molecule its own checkout). Installing it would replace the collection the action just put there.
-Phase 2b: move the image and every consumer's setup-molecule to one tag, then feed the labs
-`collections.yml` minus `git_cgallagher.molecule`.
+vmware joined the same way on 2026-11-02 (vmware PR 2, on `1.1.0-ci`), after image 1.1.0 pinned
+pyvmomi and put it in the `consumers` check.
+
+### Phase 2b: one driver, and collection pins in the labs (done 2026-11-02)
+
+- **One Molecule driver everywhere.** The image's `collections.yml` commit and every consumer's
+  setup-molecule / vm-screendump `uses:` line move in the same round: v0.3.1 (1.0.0, isc PR 30),
+  v0.3.2 (1.1.0), v0.4.0 (`ab9538d`, 1.2.0, isc PR 32; windows by the molecule session). Whoever cuts
+  a driver release tells this repo's maintainer in that round.
+- **The Windows labs install the image's collection pins.** isc `windows-dc` (isc PR 32) and windows
+  `domain-lab` (windows PR 53) read `/usr/share/ansible-runtime/collections.yml` from the image and
+  pass it as setup-molecule's `requirements:`, **minus `git_cgallagher.molecule`**: the action
+  installs that one from its own pinned commit, which may be newer than the image's during a driver
+  round. The filter runs in the image's Python (`docker run … python -c`), so the runner needs no
+  PyYAML. Molecule's own `dependency` step still names the repo's ranges and skips them, since the
+  pinned versions already satisfy them.
+- **Still on ranges, on purpose:** molecule's own CI, which tests its checkout of
+  `git_cgallagher.molecule` and must not have it replaced.
+- Image 1.0.0 also dropped `molecule-plugins[docker]` and the docker SDK: every scenario uses
+  `molecule-git-cgallagher`, which uses the docker CLI.
 
 ### Phase 3: `RUNTIME_IMAGE` bumps without a human
 
