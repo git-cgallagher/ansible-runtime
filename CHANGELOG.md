@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.4.1 (unreleased)
+
+### Fixed
+
+- Debian security updates reach the image. Every build runs `apt-get upgrade` on the pinned base,
+  and `build.yml` passes an `APT_REFRESH` build arg (the UTC date; the run id on scheduled and
+  manual runs) so a cached layer can't keep old packages. 1.4.0 shipped `apt` 3.0.3
+  (CVE-2026-109518, High; fixed in 3.0.4) because its apt layer came from a 2026-11-01 cache, and
+  the weekly rebuild had never taken a Debian update.
+
+### Changed
+
+- The grype gate fails on fixable **High** and Critical findings (was Critical only). Accepted
+  findings go in `.grype.yaml`, each with a reason (`tests/grype_ignores.py` checks).
+
 ## 1.4.0 (2026-11-06)
 
 ### Changed

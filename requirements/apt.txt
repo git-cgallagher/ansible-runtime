@@ -1,7 +1,8 @@
 # Debian packages installed in the image, one per line (comments and blank lines ignored).
 # Versions are NOT pinned: Debian removes old versions from its archive, so pins break builds.
-# They track the pinned base image (Dockerfile digest, bumped by Renovate) plus the weekly
-# scheduled rebuild, which picks up Debian security updates.
+# Every build runs apt-get upgrade, so the image gets Debian's security updates on top of the pinned
+# base image (Dockerfile digest, bumped by Renovate). build.yml's APT_REFRESH build arg stops a cached
+# layer from keeping old packages: it changes daily, and on every scheduled or manual run.
 
 # git: ansible-galaxy installs from git sources; ansible-lint and Molecule read the repo.
 git

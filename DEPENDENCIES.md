@@ -11,7 +11,7 @@ saying **why it's there and who uses it**. Read those for the detail; this page 
 |---|---|---|---|
 | Base OS + Python 3.13 | `Dockerfile` (`FROM python:3.13-slim-trixie@sha256:…`) | image digest | Renovate (`dockerfile`), monthly |
 | docker CLI | `Dockerfile` (`FROM docker:X.Y.Z-cli@sha256:…`) | version + digest | Renovate (`dockerfile`), monthly |
-| Debian packages | `requirements/apt.txt` | **not pinned** (Debian drops old versions); they follow the base digest and the weekly rebuild | weekly scheduled build |
+| Debian packages | `requirements/apt.txt` | **not pinned** (Debian drops old versions); every build runs `apt-get upgrade` on the pinned base, and `APT_REFRESH` re-runs that layer daily | every build (the cache refreshes daily), plus the weekly scheduled build |
 | Python packages (ansible-core, ansible-lint, yamllint, Molecule, pypsrp, kubernetes, boto3/botocore, pyvmomi; test tools moto, flask, flask-cors, pytest) | `requirements/python.in` → `requirements/python.txt` | every package, transitive ones too, at one version + hashes; installed with `--require-hashes` | Renovate (`pip-compile`), monthly + lock-file maintenance |
 | Third-party collections | `requirements/collections.yml` | exact version (a bare version is an exact pin to ansible-galaxy); transitive ones listed too | Renovate (`ansible-galaxy`), monthly |
 | Our collections (`git_cgallagher.*`) | `requirements/collections-runtime.yml` | exact version | Renovate (`ansible-galaxy`) as soon as released, **merged by Renovate and released automatically** (below) |

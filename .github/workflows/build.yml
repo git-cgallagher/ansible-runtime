@@ -6,7 +6,9 @@ name: build
 # Release: a tag push gets a GitHub release listing the image's contents. A merge to main that
 # only bumps git_cgallagher.* versions (Renovate's automerged PRs) is released as the next patch
 # version automatically: the images just built for that commit get the version tags.
-# Weekly: rebuild main so Debian security updates land without a dependency change.
+# Weekly: rebuild main so Debian security updates land without a dependency change. Every build runs
+# apt-get upgrade; APT_REFRESH (the UTC date, or the run id on scheduled and manual runs) keeps a
+# cached layer from holding old Debian packages.
 on:
   pull_request:
   push:
@@ -52,12 +54,26 @@ jobs:
           persist-credentials: false
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069  # v4.4.1
 
+      # The Dockerfile's apt layer re-runs whenever this changes: daily, and on every scheduled or
+      # manual run, so neither can publish a cached layer with old Debian packages.
+      - name: Debian refresh key
+        id: refresh
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          case "$EVENT" in
+            schedule|workflow_dispatch) key="run-$GITHUB_RUN_ID" ;;
+            *) key=$(date -u +%F) ;;
+          esac
+          echo "key=$key" >> "$GITHUB_OUTPUT"
+
       - name: Build
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc  # v7.4.0
         with:
           context: .
           target: ${{ matrix.target }}
           platforms: linux/${{ matrix.arch }}
+          build-args: APT_REFRESH=${{ steps.refresh.outputs.key }}
           load: true
           tags: ansible-runtime:test
           cache-from: type=gha,scope=${{ matrix.arch }}-${{ matrix.target }}
@@ -66,12 +82,17 @@ jobs:
       - name: Smoke test
         run: docker run --rm -v "$PWD":/src -w /src ansible-runtime:test tests/smoke.sh ${{ matrix.target }}
 
-      - name: Scan for fixable critical vulnerabilities
+      # .grype.yaml lists accepted findings; each needs a reason.
+      - name: Accepted findings have a reason
+        if: matrix.arch == 'amd64'
+        run: docker run --rm -v "$PWD":/src -w /src ansible-runtime:test python tests/grype_ignores.py
+
+      - name: Scan for fixable high and critical vulnerabilities
         if: matrix.arch == 'amd64'
         uses: anchore/scan-action@27805bf3b4e84b4a5c980df22ed233c00390a439  # v7.4.2
         with:
           image: ansible-runtime:test
-          severity-cutoff: critical
+          severity-cutoff: high
           only-fixed: true
           output-format: table
 
@@ -92,6 +113,7 @@ jobs:
           context: .
           target: ${{ matrix.target }}
           platforms: linux/${{ matrix.arch }}
+          build-args: APT_REFRESH=${{ steps.refresh.outputs.key }}
           outputs: type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=true
           cache-from: type=gha,scope=${{ matrix.arch }}-${{ matrix.target }}
           provenance: false
@@ -122,11 +144,22 @@ jobs:
         with:
           persist-credentials: false
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069  # v4.4.1
+      - name: Debian refresh key
+        id: refresh
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          case "$EVENT" in
+            schedule|workflow_dispatch) key="run-$GITHUB_RUN_ID" ;;
+            *) key=$(date -u +%F) ;;
+          esac
+          echo "key=$key" >> "$GITHUB_OUTPUT"
       - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc  # v7.4.0
         with:
           context: .
           target: ci
           platforms: linux/amd64
+          build-args: APT_REFRESH=${{ steps.refresh.outputs.key }}
           load: true
           tags: ansible-runtime:test
           cache-from: type=gha,scope=amd64-ci

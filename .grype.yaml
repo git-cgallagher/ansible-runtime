@@ -1,0 +1,12 @@
+# grype's settings for this repo; build.yml's scans read it (grype finds .grype.yaml in the
+# working directory). The image fails CI on a fixable High or Critical finding.
+#
+# Accepted findings: a fixable High/Critical finding we can't fix yet, for example a CPython CVE
+# whose fix is only in a later Python minor. Every entry needs a `reason` saying why it's safe to
+# ship and what will remove it, plus the issue that tracks it. Delete the entry once it's fixed.
+#
+#   - vulnerability: CVE-YYYY-NNNNN
+#     package:
+#       name: <package>
+#     reason: "<why it's accepted>; tracked in #<issue>"
+ignore: []
