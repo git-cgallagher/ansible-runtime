@@ -24,7 +24,8 @@ Public repo; the new-public-repo baseline applies.
 ## Pipeline (`.github/workflows/build.yml`)
 
 - `image (target, arch)`: 4 jobs. Build (amd64 on `ubuntu-24.04`, arm64 natively on
-  `ubuntu-24.04-arm`), `tests/smoke.sh`, grype scan (amd64; fails on fixable critical). Outside PRs,
+  `ubuntu-24.04-arm`), `tests/smoke.sh`, grype scan (amd64; fails on a fixable High or Critical finding not accepted in
+  `.grype.yaml`, whose entries `tests/grype_ignores.py` checks have a reason). Outside PRs,
   push by digest.
 - `consumers`: builds `ci`, clones isc/windows/orchestration/aws/vmware at `main`, runs
   `tests/coverage.py` and `tests/collection_requirements.py`,
@@ -122,6 +123,16 @@ minor/major, Python minor, or a removed collection/package.
 - **Transitive collections must be pinned too.** `community.docker` pulls in
   `community.library_inventory_filtering_v1`; `smoke.sh` fails on any installed collection not in
   the pin files (`ansible._*` are ansible-core internals and exempt).
+- **A cached apt layer keeps old Debian packages.** The base digest is pinned, so the
+  `apt-get` RUN never changed and buildx reused it from the GHA cache: image 1.4.0, built
+  2026-11-06, shipped the 2026-11-01 Debian packages and `apt` 3.0.3 (CVE-2026-109518, High, fixed
+  in trixie-security's 3.0.4), and the weekly rebuild never took a Debian update. Every build now
+  runs `apt-get upgrade`, and `build.yml` passes `APT_REFRESH` (the UTC date; the run id on
+  scheduled and manual runs), which re-runs that layer. Keep the build arg on every build of the
+  image, the push step's included, or it rebuilds from a different layer than the one tested.
+- **Accepted findings go in `.grype.yaml`**, each with a `reason` (what makes it safe, what removes
+  it, the tracking issue). grype reports CPython CVEs "fixed in" a later Python minor (3.15, 3.16);
+  those can't be fixed on 3.13, so if one is High it's accepted here until the Python minor moves.
 - **`molecule drivers | grep -q` under `set -o pipefail` fails at random** (grep exits early,
   molecule gets SIGPIPE). Capture the output first.
 - **The image runs as root, deliberately.** GitHub `container:` jobs need it (the workspace and

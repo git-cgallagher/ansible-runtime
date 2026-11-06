@@ -4,7 +4,8 @@
 #             third-party collections.
 #             Collection repos run their own CI in this one, so they test their checkout.
 #   runtime : ci + the git_cgallagher.* collections, for running playbooks.
-# Every version comes from requirements/; Renovate bumps the two FROM digests below.
+# Every version comes from requirements/; Renovate bumps the two FROM digests below. Debian
+# packages aren't pinned (requirements/apt.txt): each build takes the current security updates.
 
 # The docker CLI only (static binary): Molecule's docker driver and the community.docker
 # docker connection shell out to it. The daemon is the host's, via /var/run/docker.sock.
@@ -18,8 +19,14 @@ ENV PIP_NO_CACHE_DIR=1 \
     ANSIBLE_FORCE_COLOR=1 \
     PY_COLORS=1
 
+# apt-get upgrade takes Debian's security updates on top of the pinned base digest. A cached layer
+# would keep yesterday's packages, so build.yml passes APT_REFRESH (the UTC date, or the run id on
+# scheduled and manual runs): a new value re-runs this layer and everything after it.
+ARG APT_REFRESH=unset
 COPY requirements/apt.txt /tmp/requirements/apt.txt
-RUN apt-get update \
+RUN echo "apt refresh: $APT_REFRESH" \
+ && apt-get update \
+ && apt-get upgrade -y --no-install-recommends \
  && grep -Ev '^[[:space:]]*(#|$)' /tmp/requirements/apt.txt \
       | xargs apt-get install -y --no-install-recommends \
  && rm -rf /var/lib/apt/lists/*
