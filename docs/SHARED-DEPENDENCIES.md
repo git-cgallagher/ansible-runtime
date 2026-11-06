@@ -124,9 +124,14 @@ pyvmomi and put it in the `consumers` check.
 
 ### Phase 3: `RUNTIME_IMAGE` bumps without a human
 
-Today each image release means a hand-made bump PR in every consumer. Options: a Renovate regex
-manager in each consumer (needs Renovate there too; the consumers use Dependabot, which can't update
-an `env:` value), or this repo's `release` job opening the bump PRs itself. Decide after Phase 2.
+**Built 2026-11-06, waiting on a token.** This repo's `build.yml` opens the bump PRs itself: after
+every release (a tag, a collection bump, a daily security rebuild), its `bump-consumers` job runs
+`.github/ci/bump-consumer.sh` for each consumer. A Renovate regex manager in each consumer was the
+other option; it was set aside because it needs Renovate installed in six more repos, and the
+consumers use Dependabot, which can't update an `env:` value. The PRs need a token beyond
+`GITHUB_TOKEN`, which can't push to another repo and whose PRs start no CI: Chris sets
+`CONSUMER_BUMP_TOKEN` in the `consumer-bumps` environment (AGENTS.md TODO). The PRs still merge by
+hand, under each repo's merge rules.
 
 ### Phase 4: ansible-test constraints (evaluate)
 
