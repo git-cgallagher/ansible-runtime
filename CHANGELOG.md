@@ -16,6 +16,8 @@
   and releases a rebuild of `main` as the next patch version when fresh Debian packages fix a High
   or Critical finding (`build.yml`'s new `security_release` dispatch). Findings a rebuild can't fix
   go in one `security` issue.
+- `bump-consumers` job: after every release, a PR in each consumer moving `RUNTIME_IMAGE` to the
+  new `-ci` image (needs `CONSUMER_BUMP_TOKEN` in the `consumer-bumps` environment).
 
 ### Changed
 

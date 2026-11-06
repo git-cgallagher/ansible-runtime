@@ -311,6 +311,8 @@ jobs:
     permissions:
       contents: write  # the git tag and the GitHub release
       packages: write  # the version tags on GHCR
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
@@ -399,3 +401,44 @@ jobs:
             docker run --rm -v "$PWD":/src -w /src "$IMAGE:$VERSION" python tests/contents.py
           } > notes.md
           gh release create "v$VERSION" --target "$GITHUB_SHA" --title "v$VERSION" --notes-file notes.md
+
+  # After every release (tag, collection bump, security rebuild): one PR per consumer moving its
+  # RUNTIME_IMAGE to the new -ci image (tag + digest), so a fix reaches their CI without a hand
+  # round. The PRs open and wait: merging stays a person's (or agent's) call, one at a time on the
+  # Galaxy repos, and windows after the WSFC session's go. Needs CONSUMER_BUMP_TOKEN in the
+  # consumer-bumps environment (a fine-grained token on the six consumer repos: contents, pull
+  # requests and workflows, read and write). GITHUB_TOKEN can't push to other repos, and a PR it
+  # opened wouldn't start their CI. Without the secret the job only says so.
+  bump-consumers:
+    needs: release
+    if: needs.release.outputs.version != ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: consumer-bumps
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Open RUNTIME_IMAGE bump PRs
+        env:
+          GH_TOKEN: ${{ secrets.CONSUMER_BUMP_TOKEN }}
+          VERSION: ${{ needs.release.outputs.version }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::notice::CONSUMER_BUMP_TOKEN is not set: bump each consumer's RUNTIME_IMAGE to $VERSION-ci by hand"
+            exit 0
+          fi
+          digest=$(docker buildx imagetools inspect "$IMAGE:$VERSION-ci" --format '{{json .Manifest.Digest}}' | tr -d '"')
+          git config --global user.name "git-cgallagher"
+          git config --global user.email "git-cgallagher@users.noreply.github.com"
+          failed=""
+          # repo:workflow file holding RUNTIME_IMAGE (keep in step with docs/SHARED-CI.md's consumer list)
+          for entry in isc:ansible-test.yml windows:ansible-test.yml orchestration:ansible-test.yml \
+                       aws:ansible-test.yml vmware:ansible-test.yml molecule:ci.yml; do
+            repo="git-cgallagher/ansible-collection-${entry%%:*}"
+            echo "::group::$repo"
+            .github/ci/bump-consumer.sh "$repo" ".github/workflows/${entry#*:}" "$VERSION" "$IMAGE:$VERSION-ci@$digest" \
+              || failed="$failed $repo"
+            echo "::endgroup::"
+          done
+          if [ -n "$failed" ]; then echo "::error::no bump PR for:$failed"; exit 1; fi

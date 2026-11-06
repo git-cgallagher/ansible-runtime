@@ -32,6 +32,10 @@ Public repo; the new-public-repo baseline applies.
   yamllint + ansible-lint on isc, windows, aws and vmware, and one Molecule scenario (isc kea_dhcp,
   Debian 12) from inside the image against the runner's Docker.
 - `release`: not on PRs; see Releasing.
+- `bump-consumers`: after any release, one PR per consumer moving `RUNTIME_IMAGE` to the new
+  `-ci` image (`.github/ci/bump-consumer.sh`; skips a repo already there or with the branch).
+  Runs in the `consumer-bumps` environment with `CONSUMER_BUMP_TOKEN`; without it, a notice only.
+  The PRs are merged by hand.
 - `security.yml` (daily 07:30 UTC, manual): scans the latest release (`:X.Y.Z` and `-ci`, amd64) with
   grype, uploads every fixable finding to code scanning (category `released-image-<target>`), and
   sorts the fixable High/Critical ones: Debian packages apt can upgrade in the image today
@@ -180,6 +184,11 @@ minor/major, Python minor, or a removed collection/package.
   windows PR #30), orchestration (Molecule; orchestration PR #16), each through its own
   `.github/ci/runtime.sh` (`docker run --network host`, checkout at the same path), not a `container:`
   job: isc's render test bind-mounts files into `docker run` and its Stork scenarios reach published
-  ports on 127.0.0.1. Bump their `RUNTIME_IMAGE` (tag + digest) after each release.
+  ports on 127.0.0.1. Their `RUNTIME_IMAGE` (tag + digest) bump PRs come from `bump-consumers`
+  after each release, once `CONSUMER_BUMP_TOKEN` is set; by hand until then.
 - Windows KVM lab jobs: decide image-as-controller (`docker run --device /dev/kvm`) vs host.
 - Install the Mend Renovate app on this repo (owner, UI only).
+- `CONSUMER_BUMP_TOKEN` (owner): a fine-grained token on the six consumer repos (isc, windows,
+  orchestration, aws, vmware, molecule) with Contents, Pull requests and Workflows read/write,
+  stored as a secret in this repo's `consumer-bumps` environment (deployable from `main` and `v*`
+  tags only; created 2026-11-06). Until it's set, `bump-consumers` only prints a notice.

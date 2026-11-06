@@ -144,7 +144,7 @@ the job.
 
 | Pin | Where | Moves |
 |---|---|---|
-| `RUNTIME_IMAGE: ghcr.io/git-cgallagher/ansible-runtime:X.Y.Z-ci@sha256:…` | one `env:` line in `.github/workflows/ansible-test.yml` (`ci.yml` in the driver repo). Other workflows read that line (`sed -n 's/^ *RUNTIME_IMAGE: //p'`), so it's set once | by hand, after an image release |
+| `RUNTIME_IMAGE: ghcr.io/git-cgallagher/ansible-runtime:X.Y.Z-ci@sha256:…` | one `env:` line in `.github/workflows/ansible-test.yml` (`ci.yml` in the driver repo). Other workflows read that line (`sed -n 's/^ *RUNTIME_IMAGE: //p'`), so it's set once | a PR from ansible-runtime's `bump-consumers` job after each image release (by hand until its token is set) |
 | `setup-molecule@<commit>` and `vm-screendump@<commit>`, each with a `# vX.Y.Z` comment | the KVM lab workflows | in a driver round, with the image's driver pin |
 | Ranges: `galaxy.yml` dependencies, `requirements.yml`, `requirements.txt`, `tests/{unit,integration}/requirements.txt` | the collection; they're what Galaxy users install against | when the collection needs something new; the image pins a version inside the range first |
 | The ansible-test matrix | `ansible-test.yml` | when ansible-core has a new stable branch |
@@ -180,9 +180,14 @@ A new image's digest, for `RUNTIME_IMAGE`, is the `Digest:` line of
   is on `main`, then push an annotated `vX.Y.Z` tag on it. Patch is a rebuild or docs, minor is any
   dependency bump (the driver's included), major is an ansible-core or Python minor, or a removal.
 
-Either way, a consumer stays where it is until its `RUNTIME_IMAGE` is bumped, by hand, in each of
-isc, windows, orchestration, aws, vmware and the driver repo. Automating that is Phase 3 of
-[SHARED-DEPENDENCIES.md](SHARED-DEPENDENCIES.md).
+A daily security rebuild is released the same way (`security.yml`, see AGENTS.md).
+
+Either way, a consumer stays where it is until its `RUNTIME_IMAGE` is bumped in each of isc,
+windows, orchestration, aws, vmware and the driver repo. After every release, `build.yml`'s
+`bump-consumers` job opens that PR in each repo (`.github/ci/bump-consumer.sh`), once Chris has set
+`CONSUMER_BUMP_TOKEN` in the `consumer-bumps` environment; until then it's by hand. The PRs wait to
+be merged: one at a time on the Galaxy repos, windows after the WSFC session's go. A new consumer
+goes in that job's list too.
 
 ### A driver release, and the round after it
 
@@ -206,7 +211,8 @@ A driver release is finished when the labs and the image both run it:
 5. **Image PR** here: the `ansible-collection-molecule` commit in `requirements/collections.yml`
    moves to the tag's commit (by hand; Renovate can't), with a CHANGELOG entry, then a minor release
    by hand.
-6. **Bump `RUNTIME_IMAGE`** in the consumers, so their docker scenarios run the new driver too.
+6. **Bump `RUNTIME_IMAGE`** in the consumers, so their docker scenarios run the new driver too
+   (the release opens these PRs once `CONSUMER_BUMP_TOKEN` is set; merge them).
 
 ## Adding a collection repo
 
