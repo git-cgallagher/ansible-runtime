@@ -38,7 +38,8 @@ Public repo; the new-public-repo baseline applies.
   (**rebuild**) and the rest (**pin change**). Rebuild findings, when nothing that goes into the
   image (`Dockerfile`, `requirements/`, `build/`, `tests/collection_requirements.py`) changed since
   the release: it dispatches `build.yml` with `security_release`, which rebuilds `main` with fresh
-  Debian packages and releases it as the next patch. Anything else (pin changes, or a rebuild while
+  Debian packages and releases it as the next patch, unless pin-change findings remain (the rebuild
+  would fail the grype gate). Anything else (pin changes, or a rebuild while
   `main` holds unreleased image changes) goes in one issue, "Fixable vulnerabilities in the released
   image" (label `security`), updated daily and closed when nothing is left.
 - `manifest (target)`: not on PRs. Joins the two arches under the tags, refuses to overwrite an

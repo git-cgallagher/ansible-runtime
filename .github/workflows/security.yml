@@ -135,7 +135,10 @@ jobs:
           echo "$tag: $rebuild fixable by a rebuild, $pin need a pin change; unreleased image changes: ${unreleased:-none}"
 
           note=""
-          if [ "$rebuild" -gt 0 ]; then
+          if [ "$rebuild" -gt 0 ] && [ "$pin" -gt 0 ]; then
+            # The rebuild would still carry the pin findings and fail build.yml's grype gate.
+            note="A rebuild fixes the findings marked **rebuild**, but it would still carry the **pin change** ones and fail the build's grype gate, so no security release starts until those are fixed or accepted in \`.grype.yaml\`."
+          elif [ "$rebuild" -gt 0 ]; then
             if [ -z "$unreleased" ]; then
               if gh run list --workflow build.yml --event workflow_dispatch --json status \
                    --jq '.[] | select(.status != "completed")' | grep -q .; then
