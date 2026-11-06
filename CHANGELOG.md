@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.4.0 (2026-11-06)
+
+### Changed
+
+- Molecule driver `molecule-git-cgallagher` + `git_cgallagher.molecule` v0.5.0 → v0.5.1 (`728a9fe`),
+  in the same round as isc's `windows-dc` and windows' `domain-lab`. v0.5.1 changes only
+  setup-molecule's QEMU install on the runner (`.deb`s from the actions cache, each checked against
+  its SHA256; a crawling Ubuntu mirror dropped for the next one); the docker kind the image's
+  scenarios use is unchanged.
+
 ## 1.3.0 (2026-11-02)
 
 ### Changed
