@@ -1,0 +1,175 @@
+name: security
+
+# Daily: scan the latest released images (what consumers pin) for fixable vulnerabilities.
+# - Every fixable finding goes to code scanning (Security tab), one category per target, so an
+#   alert closes itself once a release no longer has it.
+# - Fixable High/Critical findings (not accepted in .grype.yaml) in Debian packages that apt can
+#   upgrade today: dispatch build.yml with security_release, which rebuilds main with fresh Debian
+#   packages and releases it as the next patch version. Only when main has no unreleased image
+#   changes since the last release; otherwise the issue below asks for a hand release.
+# - Anything a rebuild can't fix (a Python package, the docker CLI, CPython): one issue, labelled
+#   security, kept up to date and closed when nothing is left.
+on:
+  schedule:
+    - cron: '30 7 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  IMAGE: ghcr.io/git-cgallagher/ansible-runtime
+  ISSUE_TITLE: Fixable vulnerabilities in the released image
+
+concurrency:
+  group: security
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    name: scan (${{ matrix.target }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      security-events: write  # SARIF upload
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [ci, runtime]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Latest release
+        id: release
+        env:
+          SUFFIX: ${{ matrix.target == 'ci' && '-ci' || '' }}
+        run: |
+          tag=$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n1)
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "ref=$IMAGE:${tag#v}$SUFFIX" >> "$GITHUB_OUTPUT"
+
+      - uses: anchore/scan-action/download-grype@27805bf3b4e84b4a5c980df22ed233c00390a439  # v7.4.2
+        id: grype
+
+      # grype reads .grype.yaml (accepted findings) from the working directory.
+      - name: Scan
+        env:
+          GRYPE: ${{ steps.grype.outputs.cmd }}
+          REF: ${{ steps.release.outputs.ref }}
+        run: |
+          docker pull --quiet --platform linux/amd64 "$REF"
+          "$GRYPE" "$REF" --only-fixed -o sarif=grype.sarif -o json=grype.json
+
+      - name: Upload to code scanning
+        uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066  # v4.39.3
+        with:
+          sarif_file: grype.sarif
+          category: released-image-${{ matrix.target }}
+
+      # Split the fixable High/Critical findings: Debian packages apt can upgrade in the image right
+      # now (a rebuild fixes them) and everything else (a pin has to move).
+      - name: Triage
+        env:
+          REF: ${{ steps.release.outputs.ref }}
+          TARGET: ${{ matrix.target }}
+        run: |
+          jq -c '[.matches[] | select(.vulnerability.severity == "High" or .vulnerability.severity == "Critical")
+                  | {id: .vulnerability.id, severity: .vulnerability.severity, name: .artifact.name,
+                     version: .artifact.version, type: .artifact.type, fix: (.vulnerability.fix.versions | join(", "))}]
+                 | unique' grype.json > findings.json
+          debs=$(jq -r '.[] | select(.type == "deb") | .name' findings.json | sort -u)
+          upgradable=""
+          if [ -n "$debs" ]; then
+            upgradable=$(docker run --rm --platform linux/amd64 "$REF" sh -c \
+              'apt-get update -qq >/dev/null 2>&1; apt list --upgradable 2>/dev/null' | sed -n 's|^\([^/]*\)/.*|\1|p' | sort -u)
+          fi
+          jq -c --arg up "$upgradable" --arg target "$TARGET" \
+            '($up | split("\n") | map(select(. != ""))) as $u
+             | {target: $target,
+                rebuild: [.[] | select(.type == "deb" and (.name as $n | $u | index($n)))],
+                pin: [.[] | select((.type == "deb" and (.name as $n | $u | index($n))) | not)]}' \
+            findings.json > triage.json
+          jq . triage.json
+
+      # A matrix job's outputs keep only the last leg's, so each target hands its triage over as
+      # an artifact.
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: triage-${{ matrix.target }}
+          path: triage.json
+          retention-days: 7
+
+  act:
+    needs: scan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: write  # dispatch build.yml
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
+        with:
+          pattern: triage-*
+          path: triage
+
+      - name: Rebuild and release, or report
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          all=$(jq -cs '{rebuild: (map(.rebuild) | add | unique), pin: (map(.pin) | add | unique)}' triage/*/triage.json)
+          rebuild=$(jq '.rebuild | length' <<<"$all"); pin=$(jq '.pin | length' <<<"$all")
+          tag=$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n1)
+          # Files that change what goes into the image. Anything else on main (docs, workflows,
+          # tests run only in CI) may ship in an automatic security release.
+          unreleased=$(git diff --name-only "$tag" HEAD -- Dockerfile requirements build tests/collection_requirements.py)
+          echo "$tag: $rebuild fixable by a rebuild, $pin need a pin change; unreleased image changes: ${unreleased:-none}"
+
+          note=""
+          if [ "$rebuild" -gt 0 ]; then
+            if [ -z "$unreleased" ]; then
+              if gh run list --workflow build.yml --event workflow_dispatch --json status \
+                   --jq '.[] | select(.status != "completed")' | grep -q .; then
+                echo "A build.yml dispatch is already running; not starting another."
+              else
+                cves=$(jq -r '[.rebuild[] | "\(.id) (\(.name))"] | unique | join(", ")' <<<"$all")
+                gh workflow run build.yml --ref main -f security_release=true -f security_note="Fixes $cves"
+                echo "Dispatched a security release of main (after $tag) for: $cves"
+              fi
+            else
+              note="A rebuild fixes the findings marked **rebuild**, but \`main\` has unreleased image changes since \`$tag\` ($(tr '\n' ' ' <<<"$unreleased")), so it can't be released automatically: release \`main\` by hand (AGENTS.md, Releasing)."
+            fi
+          fi
+
+          existing=$(gh issue list --state open --search "\"$ISSUE_TITLE\" in:title" --json number --jq '.[0].number // empty')
+          if [ "$pin" -eq 0 ] && [ -z "$note" ]; then
+            if [ -n "$existing" ]; then
+              gh issue close "$existing" --comment "The daily scan of \`$tag\` finds nothing left that needs a pin change or a hand release ($(date -u +%F))."
+            fi
+            exit 0
+          fi
+          {
+            echo "The daily \`security\` workflow found fixable High/Critical vulnerabilities in \`$IMAGE:${tag#v}\` (and \`-ci\`) that it can't fix on its own. Updated $(date -u +%F) by run $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID."
+            echo
+            [ -n "$note" ] && { echo "$note"; echo; }
+            echo "| Vulnerability | Severity | Package | Installed | Fixed in | Fix by |"
+            echo "|---|---|---|---|---|---|"
+            jq -r '(.rebuild[] | . + {by: "rebuild"}), (.pin[] | . + {by: "pin change"})
+                   | "| \(.id) | \(.severity) | \(.name) (\(.type)) | \(.version) | \(.fix) | \(.by) |"' <<<"$all"
+            echo
+            echo "A pin change: bump the package in \`requirements/\` (Python: \`python.in\` + \`tests/lock.sh\`; base images and the docker CLI: the Dockerfile digests), or accept it in \`.grype.yaml\` with a reason. Renovate opens the Python fixes itself once its app is installed."
+          } > body.md
+          if [ -n "$existing" ]; then
+            gh issue edit "$existing" --body-file body.md
+          else
+            gh issue create --title "$ISSUE_TITLE" --label security --body-file body.md
+          fi

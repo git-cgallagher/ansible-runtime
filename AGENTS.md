@@ -32,6 +32,15 @@ Public repo; the new-public-repo baseline applies.
   yamllint + ansible-lint on isc, windows, aws and vmware, and one Molecule scenario (isc kea_dhcp,
   Debian 12) from inside the image against the runner's Docker.
 - `release`: not on PRs; see Releasing.
+- `security.yml` (daily 07:30 UTC, manual): scans the latest release (`:X.Y.Z` and `-ci`, amd64) with
+  grype, uploads every fixable finding to code scanning (category `released-image-<target>`), and
+  sorts the fixable High/Critical ones: Debian packages apt can upgrade in the image today
+  (**rebuild**) and the rest (**pin change**). Rebuild findings, when nothing that goes into the
+  image (`Dockerfile`, `requirements/`, `build/`, `tests/collection_requirements.py`) changed since
+  the release: it dispatches `build.yml` with `security_release`, which rebuilds `main` with fresh
+  Debian packages and releases it as the next patch. Anything else (pin changes, or a rebuild while
+  `main` holds unreleased image changes) goes in one issue, "Fixable vulnerabilities in the released
+  image" (label `security`), updated daily and closed when nothing is left.
 - `manifest (target)`: not on PRs. Joins the two arches under the tags, refuses to overwrite an
   existing `X.Y.Z`, attests build provenance.
 - Triggers: PR, push to `main`, tag `vX.Y.Z`, weekly (Mon 06:00 UTC, moves `:main` / `:main-ci` only;
@@ -46,6 +55,13 @@ Public repo; the new-public-repo baseline applies.
 by `build.yml`'s `release` job as the next patch version. It tags that commit's `sha-` images (no
 rebuild), then creates the git tag and a GitHub release through the API. These releases have no
 CHANGELOG entry: the GitHub release is the record.
+
+**Automatic (security rebuilds):** `security.yml` dispatches `build.yml` with `security_release`
+(see Pipeline). The run builds `main` with fresh Debian packages (`APT_REFRESH` = the run id),
+passes the same gates as any build (smoke, `consumers`, grype at High), pushes `:main`, and the
+`release` job tags that `:main` as the next patch version and creates the git tag and GitHub
+release. It refuses when `main` changed the image since the last release: those changes need a
+CHANGELOG entry and a hand release. No CHANGELOG entry either; the GitHub release says what it fixes.
 
 **By hand (everything else):**
 
