@@ -10,6 +10,13 @@
   (CVE-2026-109518, High; fixed in 3.0.4) because its apt layer came from a 2026-11-01 cache, and
   the weekly rebuild had never taken a Debian update.
 
+### Added
+
+- Daily `security` workflow: scans the latest release, uploads fixable findings to code scanning,
+  and releases a rebuild of `main` as the next patch version when fresh Debian packages fix a High
+  or Critical finding (`build.yml`'s new `security_release` dispatch). Findings a rebuild can't fix
+  go in one `security` issue.
+
 ### Changed
 
 - The grype gate fails on fixable **High** and Critical findings (was Critical only). Accepted

@@ -9,6 +9,9 @@ name: build
 # Weekly: rebuild main so Debian security updates land without a dependency change. Every build runs
 # apt-get upgrade; APT_REFRESH (the UTC date, or the run id on scheduled and manual runs) keeps a
 # cached layer from holding old Debian packages.
+# Security release: the daily `security` workflow dispatches this with security_release when a
+# released image has a High/Critical finding that fresh Debian packages fix. It rebuilds main and
+# releases it as the next patch version, if main has no unreleased image changes.
 on:
   pull_request:
   push:
@@ -17,6 +20,15 @@ on:
   schedule:
     - cron: '0 6 * * 1'
   workflow_dispatch:
+    inputs:
+      security_release:
+        description: Release this rebuild of main as the next patch version (security fixes only)
+        type: boolean
+        default: false
+      security_note:
+        description: What the release fixes (security workflow)
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -288,9 +300,11 @@ jobs:
   # only change is git_cgallagher.* version lines in collections-runtime.yml: the next patch
   # version, made by tagging this commit's sha- images (already built, tested and attested) and
   # creating the git tag + GitHub release through the API. A tag pushed with GITHUB_TOKEN starts
-  # no workflow, so nothing rebuilds. Anything else on main is released by hand (AGENTS.md).
+  # no workflow, so nothing rebuilds. On a security_release dispatch: the same, from the :main
+  # images this run just pushed, when nothing that goes into the image changed since the last
+  # release. Anything else on main is released by hand (AGENTS.md).
   release:
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.security_release)
     needs: manifest
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -307,18 +321,29 @@ jobs:
         id: version
         env:
           REF: ${{ github.ref }}
+          EVENT: ${{ github.event_name }}
         run: |
           if [[ "$REF" == refs/tags/v* ]]; then
             echo "version=${REF#refs/tags/v}" >> "$GITHUB_OUTPUT"; echo "auto=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          last=$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n1)
+          IFS=. read -r major minor patch <<<"${last#v}"
+          if [ "$EVENT" = workflow_dispatch ]; then
+            if [ "$REF" != refs/heads/main ]; then echo "::error::security_release runs on main only"; exit 1; fi
+            # The same paths security.yml checks: what goes into the image.
+            unreleased=$(git diff --name-only "$last" HEAD -- Dockerfile requirements build tests/collection_requirements.py)
+            if [ -n "$unreleased" ]; then
+              echo "::error::main changed the image since $last ($unreleased); release it by hand"; exit 1
+            fi
+            { echo "version=$major.$minor.$((patch + 1))"; echo "auto=security"; echo "source=main"; } >> "$GITHUB_OUTPUT"
+            exit 0
           fi
           files=$(git diff --name-only HEAD^1 HEAD)
           changed=$(git diff -U0 HEAD^1 HEAD -- requirements/collections-runtime.yml | grep -E '^[-+][^-+]' || true)
           if [ "$files" != requirements/collections-runtime.yml ] || grep -qvE '^[-+] +version: ' <<<"$changed"; then
             echo "Not a collection-version-only merge; release by hand if needed."; exit 0
           fi
-          last=$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n1)
-          IFS=. read -r major minor patch <<<"${last#v}"
-          echo "version=$major.$minor.$((patch + 1))" >> "$GITHUB_OUTPUT"; echo "auto=true" >> "$GITHUB_OUTPUT"
+          { echo "version=$major.$minor.$((patch + 1))"; echo "auto=collections"; echo "source=sha-${GITHUB_SHA::7}"; } >> "$GITHUB_OUTPUT"
           echo "Collection bump after $last:"; echo "$changed"
 
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069  # v4.4.1
@@ -330,19 +355,21 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Tag this commit's images as the new version
-        if: steps.version.outputs.auto == 'true'
+      # :main is this run's image on a dispatch: build runs on main queue (concurrency group), so no
+      # other run moves :main before this job.
+      - name: Tag the images just built as the new version
+        if: steps.version.outputs.auto == 'collections' || steps.version.outputs.auto == 'security'
         env:
           VERSION: ${{ steps.version.outputs.version }}
+          SOURCE: ${{ steps.version.outputs.source }}
         run: |
-          short=${GITHUB_SHA::7}
           for suffix in "" -ci; do
             if docker buildx imagetools inspect "$IMAGE:$VERSION$suffix" >/dev/null 2>&1; then
               echo "::error::$IMAGE:$VERSION$suffix already exists"; exit 1
             fi
             docker buildx imagetools create \
               -t "$IMAGE:$VERSION$suffix" -t "$IMAGE:${VERSION%.*}$suffix" -t "$IMAGE:latest$suffix" \
-              "$IMAGE:sha-$short$suffix"
+              "$IMAGE:$SOURCE$suffix"
           done
 
       - name: Create the GitHub release
@@ -351,13 +378,18 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.version.outputs.version }}
           AUTO: ${{ steps.version.outputs.auto }}
+          NOTE: ${{ inputs.security_note }}
         run: |
           if gh release view "v$VERSION" >/dev/null 2>&1; then echo "v$VERSION already released"; exit 0; fi
           {
-            if [ "$AUTO" = true ]; then
+            if [ "$AUTO" = collections ]; then
               echo "Automatic release: a git_cgallagher.* collection version bump."
               echo
               git diff -U0 HEAD^1 HEAD -- requirements/collections-runtime.yml | grep -E '^[-+] ' | sed 's/^/    /'
+            elif [ "$AUTO" = security ]; then
+              echo "Automatic security release: a rebuild of \`main\` with current Debian packages, from the daily \`security\` workflow. ${NOTE:-}"
+              echo
+              echo "No pinned version changed; nothing that goes into the image changed since the previous release."
             else
               echo "See CHANGELOG.md for what changed."
             fi
